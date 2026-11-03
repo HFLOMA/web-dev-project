@@ -1,0 +1,553 @@
+/* 
+   สารบัญ
+   1. ตัวแปรสี
+   2. ค่าพื้นฐานทั้งเว็บ
+   3. layout กับ class ช่วย
+   4. แถบบน
+   5. การ์ด กับ ปุ่ม
+   6. ตัวเลขสถิติ
+   7. ตาราง / รายการ / ปุ่มเปลี่ยนหน้า
+   8. ป้ายสถานะ กับ กล่องแจ้งผล
+   9. ฟอร์ม
+   10. ท้ายหน้า
+   11. หัวหน้า วันนี้วิ่งหรือยัง
+   12. แท็บ ภาพรวม / อันดับ / เป้าหมาย
+   13. streak กับ เป้าสัปดาห์
+   14. ตัวเลขใหญ่ท้ายหน้า
+   15. อันดับ
+   16. หน้าเช็คอิน
+   17. จอใหญ่ 768px ขึ้นไป
+*/
+
+
+
+:root {
+  --main: #e8603c;        
+  --main-soft: #ffe6dc;  
+  --bg: #f5f5f7;        
+  --card: #ffffff;        
+  --text: #1c1c1e;       
+  --muted: #8e8e93;       
+  --line: #e5e5ea;       
+}
+
+
+/* 2. ค่าพื้นฐานทั้งเว็บ */
+
+/*  ล้างระยะเว้นที่ browser ใส่มาเอง */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* [Type selector] ฟอนต์ กับ สีพื้นทั้งหน้า */
+body {
+  font-family: "Noto Sans Thai", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ลิงก์ เอาเส้นใต้กับสีน้ำเงินออก */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* รูป ไม่ให้กว้างเกินกล่อง */
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* [Attribute selector] อะไรที่มี hidden ซ่อนเสมอ เช่น แท็บ เมนู รูป preview */
+[hidden] {
+  display: none !important;
+}
+
+
+/* 3. layout กับ class ช่วย */
+
+/* กล่องเนื้อหาตรงกลาง กว้างสุด 960px */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* วางของเป็นตาราง มือถือ 1 คอลัมน์ จอใหญ่ดูหมวด 17 */
+.grid {
+  display: grid;
+  gap: 12px;
+}
+
+/* class ช่วย ใส่เพิ่มใน html ได้เลย */
+.mt     { margin-top: 12px; }      /* เว้นข้างบน */
+.muted  { color: var(--muted); }   /* ตัวหนังสือเทา */
+.link   { color: var(--main); }    /* ตัวหนังสือส้ม */
+.danger { color: #e5484d; }        /* ตัวหนังสือแดง เช่น ออกจากระบบ */
+
+/* มือถือซ่อน จอใหญ่โชว์ ดูหมวด 17 */
+.desktop-only {
+  display: none;
+}
+
+
+/* 4. แถบบน กับ เมนู ☰  [โลโก้] ... [ไอเทม] [รถเข็น] [โปรไฟล์] [☰] */
+header {
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+
+/* [Descendant selector] โลโก้ชิดซ้าย ปุ่มชิดขวา */
+header .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* โลโก้ PaceUp คำว่า Up เป็นสีส้ม */
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.logo span {
+  color: var(--main);
+}
+
+/* กลุ่มปุ่มขวา relative ให้เมนู ☰ วางตำแหน่งจากกลุ่มนี้ */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+/* [Child selector] ปุ่ม ☰ เอากรอบกับพื้นออก */
+.nav-right > button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* ไอคอนเส้น รถเข็น กับ ☰ */
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* วงกลมตัวแรกของชื่อ ปุ่มโปรไฟล์ */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--main-soft);
+  color: var(--main);
+  font-weight: 700;
+}
+
+/* [ID selector] กล่องเมนูที่เด้งลงมาใต้ ☰ */
+#menu {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  z-index: 10;
+  min-width: 180px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+#menu a {
+  display: block;
+  padding: 12px 16px;
+}
+
+/* [Adjacent sibling selector] เส้นคั่นระหว่างลิงก์ ลิงก์แรกไม่มีเส้น */
+#menu a + a {
+  border-top: 1px solid var(--line);
+}
+
+/* [Pseudo-class] เอาเมาส์ชี้แล้วพื้นเปลี่ยนสี */
+#menu a:hover {
+  background: var(--bg);
+}
+
+
+/* 5. การ์ด กับ ปุ่ม */
+
+/* การ์ดขาวมุมมน ครอบเนื้อหาแต่ละกลุ่ม */
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+/* ปุ่มพื้นฐาน สีส้ม */
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--main);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+.btn:hover {
+  opacity: 0.9;
+}
+.btn:disabled {          /* ปุ่มที่ยังกดไม่ได้ เช่น ระหว่างอ่านรูป */
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* แบบปุ่ม ใส่คู่กับ .btn เช่น class="btn big" */
+.btn.big {               /* ปุ่มใหญ่ เช็คอินวันนี้ */
+  padding: 16px 56px;
+  font-size: 1.25rem;
+}
+.btn.full {              /* ปุ่มเต็มความกว้าง */
+  width: 100%;
+}
+.btn.light {             /* ปุ่มสีอ่อน */
+  background: var(--main-soft);
+  color: var(--main);
+}
+
+
+/* 6. ตัวเลขสถิติ ใช้กับการ์ดตัวเลข เช่น streak */
+.stat {
+  text-align: center;
+}
+.label {                 /* หัวข้อเล็กสีเทา เหนือตัวเลข */
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.num {                   /* ตัวเลขใหญ่ */
+  font-size: 2rem;
+  font-weight: 700;
+}
+.num small {             /* หน่วยท้ายตัวเลข เช่น วัน กม. */
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+
+/* 7. ตาราง / รายการ / ปุ่มเปลี่ยนหน้า */
+
+/* ตาราง มือถือเลื่อนซ้ายขวาได้ */
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+th,
+td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+th {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* [Pseudo-class] แถวสุดท้ายไม่มีเส้นใต้ */
+tr:last-child td {
+  border-bottom: 0;
+}
+
+/* รายการมีเส้นคั่น เช่น อันดับ */
+.list {
+  list-style: none;
+}
+.list > li {
+  display: flex;
+  gap: 12px;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.list .name {            /* ชื่อยืดเต็มที่ว่าง ดันตัวเลขไปขวาสุด */
+  flex: 1;
+}
+
+/* ปุ่มเปลี่ยนหน้า 1 2 › */
+.pages {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.pages a {
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+.pages .active {
+  background: var(--main);
+  color: #fff;
+}
+
+
+/* 8. ป้ายสถานะ กับ กล่องแจ้งผล ใช้สีชุดเดียวกัน เลือกสีด้วย data-status */
+.pill {                  /* ป้ายเล็กในตาราง เช่น ผ่าน */
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 0.85rem;
+}
+.alert {                 /* กล่องแจ้งผล เช่น หลังส่งเช็คอิน */
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* [Attribute selector] สีตามสถานะ */
+[data-status="approved"] {   /* ผ่าน เขียว */
+  background: #e3f8ea;
+  color: #1f7a45;
+}
+[data-status="pending"] {    /* รอตรวจ เตือน เหลือง */
+  background: #fff4dc;
+  color: #8a5a00;
+}
+[data-status="rejected"] {   /* ไม่ผ่าน รูปซ้ำ แดง */
+  background: #ffe4e4;
+  color: #b42318;
+}
+
+
+/* 9. ฟอร์ม  <div class="fields"> <label class="field">ชื่อช่อง <input></label> </div> */
+
+/* กล่องรวมช่องกรอก */
+.fields {
+  background: var(--card);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 1 แถว ชื่อช่องซ้าย ช่องกรอกขวา */
+.field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+/* [Adjacent sibling selector] เส้นคั่นระหว่างแถว */
+.field + .field {
+  border-top: 1px solid var(--line);
+}
+
+/* ช่องกรอก ไม่มีกรอบ ชิดขวา */
+.field input,
+.field select {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  text-align: right;
+}
+
+/* [Pseudo-class] กรอกผิดรูปแบบ ตัวหนังสือแดง */
+input:invalid:not(:placeholder-shown) {
+  color: #e5484d;
+}
+
+/* ช่องเลือกเล็ก เช่น ตัวกรองอันดับ */
+select.small {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--bg);
+  font: inherit;
+}
+
+
+/* 10. ท้ายหน้า */
+footer {
+  padding: 24px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+
+/* 11. หัวหน้า วันนี้วิ่งหรือยัง + ปุ่มเช็คอิน */
+.hero {
+  text-align: center;
+  padding: 32px 0;
+}
+.hero h1 {
+  font-size: 2.25rem;
+  margin-bottom: 20px;
+}
+
+/* ชื่อ user ในหัวข้อ ทำให้เหมือนโดนปากกาไฮไลต์ */
+.user-name {
+  background: var(--main-soft);   /* พื้นส้มอ่อน */
+  color: var(--main);             /* ตัวหนังสือส้ม */
+  padding: 0 8px;                 /* เว้นซ้ายขวา */
+  border-radius: 8px;             /* มุมมน */
+}
+
+
+/* 12. แท็บ ภาพรวม / อันดับ / เป้าหมาย JS สลับ .active กับซ่อนโชว์ .panel */
+.tabs {
+  display: flex;
+  max-width: 360px;
+  margin: 0 auto 12px;
+  padding: 3px;
+  background: var(--line);
+  border-radius: 10px;
+}
+.tabs button {
+  flex: 1;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* แท็บที่เลือกอยู่ */
+.tabs button.active {
+  background: var(--card);
+}
+
+
+/* 13. streak กับ เป้าสัปดาห์ */
+
+/* วงกลม 7 วัน จ ถึง อา ใต้ streak */
+.days {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.days span {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  background: var(--bg);
+}
+.days .done {            /* วันที่วิ่งแล้ว */
+  background: var(--main);
+  color: #fff;
+}
+
+/* แถบเป้าสัปดาห์ ความยาว width ใส่ใน style ของ index.php */
+.progress {
+  height: 8px;
+  margin-top: 8px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+#goal-bar {
+  width: 0;
+  height: 100%;
+  background: var(--main);
+  border-radius: 8px;
+}
+
+
+/* 14. ตัวเลขใหญ่ 3 ตัวท้ายหน้า กม.รวม / ครั้งที่เช็คอิน / streak */
+.bignums {
+  display: grid;
+  gap: 16px;
+  margin: 32px 0;
+  text-align: center;
+}
+.bignums b {
+  display: block;
+  font-size: 2.75rem;
+}
+
+
+/* 15. อันดับ */
+
+/* [ID selector + Specificity] แถวของเรา id หนักกว่า class เลยทับสีพื้นของ .list > li ได้ */
+#me {
+  background: var(--main-soft);
+}
+
+
+/* 16. หน้าเช็คอิน */
+
+/* กรอบเส้นประ กดเลือกรูป */
+.upload {
+  height: 240px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px dashed var(--line);
+  border-radius: 14px;
+  color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+}
+.upload img {            /* รูปที่เลือก โชว์เต็มกรอบไม่โดนตัด */
+  height: 100%;
+  object-fit: contain;
+}
+
+/* รูปตัวอย่าง Garmin */
+.example-img {
+  max-width: 240px;
+  margin: 12px auto 0;
+  border-radius: 12px;
+}
+.example-caption {
+  text-align: center;
+  color: var(--muted);
+}
+
+/* รายการกติกา */
+.rules {
+  list-style: none;
+}
+.rules li {
+  padding: 6px 0;
+}
+
+/* [Pseudo-element] จุดส้มหน้าแต่ละข้อ */
+.rules li::before {
+  content: "• ";
+  color: var(--main);
+}
+
+
+/* 17. จอใหญ่ กว้าง 768px ขึ้นไป (mobile first) */
+@media (min-width: 768px) {
+
+  /* การ์ดเรียงแนวนอน */
+  .cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cols-3,
+  .bignums {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* โชว์ของที่ซ่อนบนมือถือ เช่น จำนวนไอเทมบนแถบบน */
+  .desktop-only {
+    display: inline;
+  }
+}
