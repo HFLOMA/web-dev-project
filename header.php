@@ -1,3 +1,9 @@
+<?php
+if (!function_exists('e')) {
+    require_once __DIR__ . '/functions.php';
+}
+?>
+<link rel="stylesheet" href="css/navbar.css?v=<?= time() ?>">
 <header>
   <div class="container">
 
@@ -5,9 +11,9 @@
 
     <div class="nav-right">
       <span class="desktop-only muted">
-        Shield <?= (int)$user["shield_balance"] ?> ·
-        Repair <?= (int)$user["freeze_balance"] ?> ·
-        Insurance <?= (int)$user["insurance_balance"] ?>
+        Shield <?= (int)($user["shield_balance"] ?? 0) ?> ·
+        Repair <?= (int)($user["freeze_balance"] ?? 0) ?> ·
+        Insurance <?= (int)($user["insurance_balance"] ?? 0) ?>
       </span>
 
       <a href="shop.php" title="ร้านค้า">
@@ -18,7 +24,7 @@
         </svg>
       </a>
 
-      <a href="profile.php" class="avatar" title="โปรไฟล์"><?= e(mb_substr($user["name"], 0, 1, "UTF-8")) ?></a>
+      <a href="profile.php" class="avatar" title="โปรไฟล์" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important; border-radius: 50% !important; text-align: center !important; padding: 0 !important; margin: 0 !important; line-height: 1 !important;"><?= e(mb_substr($user["name"] ?? "U", 0, 1, "UTF-8")) ?></a>
 
       <button id="menu-btn" title="เมนู">
         <svg class="icon" viewBox="0 0 24 24">
@@ -36,8 +42,19 @@
 </header>
 
 <script>
-  document.getElementById("menu-btn").onclick = function () {
+  (function() {
+    const menuBtn = document.getElementById("menu-btn");
     const menu = document.getElementById("menu");
-    menu.hidden = !menu.hidden;
-  };
+    if (menuBtn && menu) {
+      menuBtn.onclick = function (e) {
+        e.stopPropagation();
+        menu.hidden = !menu.hidden;
+      };
+      document.addEventListener("click", function (e) {
+        if (!menu.hidden && !menu.contains(e.target) && e.target !== menuBtn) {
+          menu.hidden = true;
+        }
+      });
+    }
+  })();
 </script>

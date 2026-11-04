@@ -32,11 +32,9 @@ CREATE TABLE paceup__users (
   last_freeze_date  DATE NULL COMMENT 'วันที่ใช้ไอเทม Freeze ล่าสุด',
   shield_balance    INT NULL DEFAULT 0 COMMENT 'จำนวนโล่กันสตรีคขาดที่มี',
   freeze_balance    INT NULL DEFAULT 0 COMMENT 'จำนวนไอเทม Freeze ที่มี',
+  insurance_balance INT NULL DEFAULT 0 COMMENT 'จำนวนไอเทม Insurance ที่มี',
   created_at        DATETIME NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'วันที่สมัคร',
-  experience        VARCHAR(255) NULL COMMENT 'ประสบการณ์วิ่ง: beginner / regular / serious',
-  insurance_balance INT NOT NULL DEFAULT 0 COMMENT 'จำนวนไอเทม Insurance ที่มี (เพิ่มเอง ไม่มีใน Supabase)',
-  lost_streak       INT NOT NULL DEFAULT 0 COMMENT 'Streak ก่อนหลุด เก็บไว้ให้ Repair กู้คืน (เพิ่มเอง)',
-  streak_lost_at    DATETIME NULL COMMENT 'เวลาที่ Streak หลุด ใช้นับ 48 ชม. ของ Repair (เพิ่มเอง)'
+  experience        VARCHAR(255) NULL COMMENT 'ประสบการณ์วิ่ง: beginner / regular / serious'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='สมาชิก (นักวิ่ง)';
 

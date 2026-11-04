@@ -1,6 +1,7 @@
+@import "../../css/navbar.css";
 /* ============================================================
-   style.css - ไฟล์สไตล์หลักของเว็บ RunStreak (มุมมอง PC)
-   เขียนแต่ง CSS ให้ดูทันสมัย สไตล์มินิมอล คลีนๆ
+   style.css 
+
    ============================================================ */
 
 /* รีเซ็ตค่าเริ่มต้นของทุกตัว */
@@ -21,20 +22,7 @@ body {
     flex-direction: column;
 }
 
-/* ------------------------------------------------------------
-   ส่วน Navbar ด้านบน ออกแบบให้ดูโมเดิร์น กระจกฝ้า (Glassmorphism)
-   ------------------------------------------------------------ */
-header {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.04);
-}
-
+/* Navbar styles moved to css/navbar.css */
 .pc-navbar {
     max-width: 1200px;
     margin: 0 auto;
@@ -356,16 +344,31 @@ button {
 }
 
 .product-icon-box {
-    width: 60px;
-    height: 60px;
-    border-radius: 16px;
-    background: #fff7ed;
-    border: 1px solid #ffedd5;
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
     flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.product-icon-box img,
+.product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 16px;
+    transition: transform 0.25s ease;
+}
+
+.product-card-pc:hover .product-img {
+    transform: scale(1.08);
 }
 
 .product-title {
@@ -483,6 +486,72 @@ button {
     transform: translateY(-1px);
 }
 
+.btn-buy:disabled,
+.btn-buy.btn-disabled {
+    background: #e2e8f0 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* แถบแจ้งเตือนเงื่อนไขสตรีคและขีดจำกัดกระเป๋าในการ์ดสินค้า */
+.condition-alert {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.4;
+}
+
+.alert-locked {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fee2e2;
+}
+
+.alert-full {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.alert-ok {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #dcfce7;
+}
+
+.inventory-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 3px 8px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.inventory-chip.chip-full {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+
+.qty-stepper.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
 /* ------------------------------------------------------------
    หน้าต่าง Modal ป๊อปอัปยืนยัน และเติมเงิน
    ------------------------------------------------------------ */
@@ -512,8 +581,15 @@ button {
 }
 
 @keyframes popIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .modal-header {
@@ -597,7 +673,7 @@ button {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 28px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .filter-title {
@@ -643,7 +719,7 @@ button {
     border: 1px solid #e2e8f0;
     border-radius: 18px;
     padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .kpi-title {
@@ -672,7 +748,7 @@ button {
     border: 1px solid #e2e8f0;
     border-radius: 20px;
     padding: 24px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .panel-head {

@@ -1,39 +1,45 @@
 <?php
 require_once "config/connect.php";
+require_once "functions.php";
 
-$userId = intval($_SESSION["user_id"]);
+$user_id = $_SESSION["user_id"] ?? 1;
 
 // ดึงข้อมูลผู้ใช้
-try {
-    $stmtUser = $pdo->prepare("SELECT name, email, coin_balance, shield_balance, current_streak FROM paceup__users WHERE id = ?");
-    $stmtUser->execute([$userId]);
-    $user = $stmtUser->fetch();
-} catch (Throwable $e) {
-    $stmtUser = $pdo->prepare("SELECT name, email, shield_balance, current_streak FROM paceup__users WHERE id = ?");
-    $stmtUser->execute([$userId]);
-    $user = $stmtUser->fetch();
-    if ($user) $user['coin_balance'] = 150.00;
+$stmt = $pdo->prepare("SELECT * FROM paceup__users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+
+if (!$user) {
+    $user = [
+        "name" => "ผู้ใช้งาน",
+        "coin_balance" => 150,
+        "shield_balance" => 0,
+        "freeze_balance" => 0,
+        "insurance_balance" => 0,
+        "current_streak" => 0
+    ];
 }
 
-$userName      = $user ? $user["name"] : "ผู้ใช้งาน";
-$coinBalance   = $user ? floatval($user["coin_balance"] ?? 150.00) : 150.00;
-$shieldBalance = $user ? intval($user["shield_balance"] ?? 0) : 0;
-$currentStreak = $user ? intval($user["current_streak"] ?? 0) : 0;
+$coin_balance      = floatval($user["coin_balance"] ?? 0);
+$shield_balance    = intval($user["shield_balance"] ?? 0);
+$freeze_balance    = intval($user["freeze_balance"] ?? 0);
+$insurance_balance = intval($user["insurance_balance"] ?? 0);
+$current_streak    = intval($user["current_streak"] ?? 0);
 
-// ดึงรายการไอเทม
-$stmtItems = $pdo->query("SELECT id, name, description, price, max_limit, is_active FROM paceup__items WHERE is_active = 1 ORDER BY id ASC");
-$items = $stmtItems->fetchAll();
+// ดึงรายการสินค้าที่เปิดขาย
+$stmt = $pdo->query("SELECT * FROM paceup__items WHERE is_active = 1 ORDER BY id ASC");
+$items = $stmt->fetchAll();
 
-// ไอคอนไอเทมแบบ SVG
-function getItemIcon($name) {
+// รูปภาพสินค้าแต่ละชิ้น
+function getItemImage($name) {
     if (stripos($name, 'shield') !== false || stripos($name, 'โล่') !== false) {
-        return '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
+        return 'img/streakShield.jpg';
     } else if (stripos($name, 'repair') !== false || stripos($name, 'ซ่อม') !== false) {
-        return '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
+        return 'img/streakRepair.jpg';
     } else if (stripos($name, 'insurance') !== false || stripos($name, 'ประกัน') !== false) {
-        return '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>';
+        return 'img/streakHavlvingInsurance.jpg';
     }
-    return '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
+    return 'img/example.jpg';
 }
 ?>
 <!DOCTYPE html>
@@ -42,6 +48,7 @@ function getItemIcon($name) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ร้านค้าไอเทม - PaceUp</title>
+    <link rel="stylesheet" href="css/navbar.css?v=<?= time() ?>">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,44 +56,7 @@ function getItemIcon($name) {
 </head>
 <body>
 
-    <!-- Navbar -->
-    <header>
-        <!-- <div class="pc-navbar">
-            <a href="shop.php" class="brand-box">
-                <div class="logo-badge">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                </div>
-                <div class="brand-text">Pace<span>Up</span></div>
-            </a>
-
-            <nav class="nav-menu">
-                <ul>
-                    <li><a href="#">หน้าแรก</a></li>
-                    <li><a href="#">เช็คอินวิ่ง</a></li>
-                    <li><a href="#">เป้าหมาย</a></li>
-                    <li><a href="#">จัดอันดับ</a></li>
-                    <li class="active"><a href="shop.php">ร้านค้า</a></li>
-                    <li><a href="history.php">ประวัติ &amp; สถิติ</a></li>
-                </ul>
-            </nav>
-
-            <div class="user-status-bar">
-                <div class="status-chip chip-streak">
-                    สตรีค: <?=$currentStreak?> วัน
-                </div>
-                <div class="status-chip chip-shield">
-                    โล่: <span id="userShield"><?=$shieldBalance?></span>
-                </div>
-                <div class="status-chip chip-coin">
-                    เหรียญ: <span id="userCoin"><?=number_format($coinBalance, 0)?></span>
-                </div>
-                <div class="chip-user">
-                    <div class="user-avatar-circle"><?=mb_substr($userName, 0, 1, 'UTF-8')?></div>
-                    <span><?=$userName?> <small style="opacity: 0.6; font-size: 11px;">(ID: <?=$userId?>)</small></span>
-                </div>
-            </div>
-        </div> -->
-    </header>
+    <?php include "header.php"; ?>
 
     <main class="main-container">
 
@@ -95,25 +65,27 @@ function getItemIcon($name) {
             <p>เลือกซื้อไอเทมสำหรับช่วยรักษาสถิติการวิ่งต่อเนื่อง หรือซ่อมแซมสถิติที่ขาดไป</p>
         </div>
 
-        <!-- ยอดเงินในกระเป๋า -->
+        <!-- กล่องกระเป๋าเงินและไอเทมที่มี -->
         <section class="wallet-card-pc">
             <div class="wallet-details">
                 <div>
                     <div class="wallet-col-title">ยอดเงินคงเหลือ</div>
-                    <div class="wallet-col-amount" id="balanceText"><?=number_format($coinBalance, 0)?> เหรียญ</div>
-                </div>
-                <div class="wallet-divider"></div>
-                <div>
-                    <div class="wallet-col-title">โล่ที่มีอยู่</div>
-                    <div class="wallet-col-sub">
-                        <span id="balanceShieldText"><?=$shieldBalance?></span> ชิ้น
-                    </div>
+                    <div class="wallet-col-amount" id="balanceText"><?= number_format($coin_balance, 0) ?> เหรียญ</div>
                 </div>
                 <div class="wallet-divider"></div>
                 <div>
                     <div class="wallet-col-title">สถิติวิ่งต่อเนื่อง</div>
-                    <div class="wallet-col-sub" style="color: #059669;">
-                        <?=$currentStreak?> วัน
+                    <div class="wallet-col-sub" style="color: #059669; font-weight: 700;">
+                        <?= $current_streak ?> วัน
+                    </div>
+                </div>
+                <div class="wallet-divider"></div>
+                <div>
+                    <div class="wallet-col-title">ไอเทมในกระเป๋า</div>
+                    <div class="wallet-col-sub" style="font-size: 13px; line-height: 1.6;">
+                        <span>Streak Shield: <strong id="balanceShieldText"><?= $shield_balance ?></strong>/<?= $items[0]['max_limit'] ?? 5 ?></span> · 
+                        <span>Streak Repair: <strong id="balanceRepairText"><?= $freeze_balance ?></strong>/<?= $items[1]['max_limit'] ?? 3 ?></span> · 
+                        <span>Streak Insurance: <strong id="balanceInsuranceText"><?= $insurance_balance ?></strong>/<?= $items[2]['max_limit'] ?? 2 ?></span>
                     </div>
                 </div>
             </div>
@@ -133,42 +105,86 @@ function getItemIcon($name) {
             <h2>รายการสินค้าพร้อมจำหน่าย</h2>
             <div class="items-grid-pc">
                 <?php foreach ($items as $item): ?>
-                <article class="product-card-pc" id="product_<?=$item['id']?>">
-                    <div class="product-header-pc">
-                        <div class="product-icon-box">
-                            <?=getItemIcon($item['name'])?>
-                        </div>
-                        <div>
-                            <div class="product-title"><?=htmlspecialchars($item['name'])?></div>
-                            <span class="product-badge">
-                                จำกัด <?=$item['max_limit'] ?: 5?> ชิ้น/ครั้ง
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="product-desc">
-                        <?=htmlspecialchars($item['description'])?>
-                    </div>
+                    <?php 
+                        $item_id   = intval($item['id']);
+                        $item_name = $item['name'];
+                        $price     = floatval($item['price']);
+                        $limit     = intval($item['max_limit'] ?? 5);
+                        $img       = getItemImage($item_name);
 
-                    <div class="product-footer">
-                        <div class="price-row">
-                            <span class="price-label">ราคา</span>
-                            <span class="price-val"><?=number_format($item['price'], 0)?> เหรียญ</span>
+                        // เช็คจำนวนที่มีในกระเป๋า
+                        $in_bag = 0;
+                        if ($item_id == 1) {
+                            $in_bag = $shield_balance;
+                        } else if ($item_id == 2) {
+                            $in_bag = $freeze_balance;
+                        } else if ($item_id == 3) {
+                            $in_bag = $insurance_balance;
+                        }
+
+                        $is_full = ($in_bag >= $limit);
+                        $can_buy = max(0, $limit - $in_bag);
+                    ?>
+                    <article class="product-card-pc" id="product_<?= $item_id ?>">
+                        <div class="product-header-pc">
+                            <div class="product-icon-box">
+                                <img src="<?= htmlspecialchars($img) ?>" alt="<?= htmlspecialchars($item_name) ?>" class="product-img">
+                            </div>
+                            <div style="flex: 1;">
+                                <div class="product-title"><?= htmlspecialchars($item_name) ?></div>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                                    <span class="inventory-chip <?= $is_full ? 'chip-full' : '' ?>">
+                                        🎒 ในกระเป๋า: <strong><?= $in_bag ?></strong>/<?= $limit ?> ชิ้น
+                                    </span>
+                                    <span class="product-badge">
+                                        จำกัดพกพา <?= $limit ?> ชิ้น
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="action-row">
-                            <div class="qty-stepper">
-                                <button type="button" class="qty-btn" onclick="changeQty(<?=$item['id']?>, -1)">-</button>
-                                <input type="text" id="qty_<?=$item['id']?>" value="1" readonly>
-                                <button type="button" class="qty-btn" onclick="changeQty(<?=$item['id']?>, 1, <?=$item['max_limit'] ?: 9?>)">+</button>
+                        <?php if ($is_full): ?>
+                            <div class="condition-alert alert-full">
+                                <span>🎒</span>
+                                <span>ช่องเก็บของเต็ม (มีครบ <?= $limit ?> ชิ้นแล้ว)</span>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <div class="product-desc">
+                            <?= htmlspecialchars($item['description']) ?>
+                        </div>
+
+                        <div class="product-footer">
+                            <div class="price-row">
+                                <span class="price-label">ราคา</span>
+                                <span class="price-val"><?= number_format($price, 0) ?> เหรียญ</span>
                             </div>
 
-                            <button type="button" class="btn-buy" onclick="openBuyModal(<?=$item['id']?>, '<?=htmlspecialchars($item['name'])?>', <?=$item['price']?>)">
-                                ซื้อไอเทม
-                            </button>
+                            <div class="action-row">
+                                <?php if ($is_full): ?>
+                                    <div class="qty-stepper disabled">
+                                        <button type="button" class="qty-btn" disabled>-</button>
+                                        <input type="text" id="qty_<?= $item_id ?>" value="0" readonly>
+                                        <button type="button" class="qty-btn" disabled>+</button>
+                                    </div>
+
+                                    <button type="button" class="btn-buy btn-disabled" disabled>
+                                        🎒 ช่องเก็บของเต็ม
+                                    </button>
+                                <?php else: ?>
+                                    <div class="qty-stepper">
+                                        <button type="button" class="qty-btn" onclick="changeQty(<?= $item_id ?>, -1, <?= $can_buy ?>)">-</button>
+                                        <input type="text" id="qty_<?= $item_id ?>" value="1" readonly>
+                                        <button type="button" class="qty-btn" onclick="changeQty(<?= $item_id ?>, 1, <?= $can_buy ?>)">+</button>
+                                    </div>
+
+                                    <button type="button" class="btn-buy" onclick="openBuyModal(<?= $item_id ?>, '<?= htmlspecialchars($item_name) ?>', <?= $price ?>, '<?= htmlspecialchars($img) ?>')">
+                                        ซื้อไอเทม
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         </div>
-                    </div>
-                </article>
+                    </article>
                 <?php endforeach; ?>
             </div>
         </section>
@@ -176,7 +192,7 @@ function getItemIcon($name) {
     </main>
 
     <footer>
-        <p>PaceUp - ระบบติดตามการวิ่งและร้านค้าไอเทม (Web Programming Project)</p>
+        <p>© 2026 PaceUp. Keep your streak alive.</p>
     </footer>
 
     <!-- Modal ยืนยันการซื้อ -->
@@ -186,8 +202,11 @@ function getItemIcon($name) {
                 <h3>ยืนยันการชำระเงิน</h3>
             </div>
 
-            <div class="modal-row">
-                <span id="modalItemTitle">Streak Shield × 1</span>
+            <div class="modal-row" style="align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img id="modalItemImg" src="" alt="" style="width: 44px; height: 44px; border-radius: 12px; object-fit: cover; border: 1px solid #e2e8f0; display: none;">
+                    <span id="modalItemTitle">Streak Shield × 1</span>
+                </div>
                 <strong id="modalItemPrice">59 เหรียญ</strong>
             </div>
 
@@ -201,7 +220,7 @@ function getItemIcon($name) {
             </div>
 
             <div class="modal-note">
-                สำเร็จ -> ตัดเงิน + สิทธิ์ไอเทมทันที
+                สำเร็จ -> ตัดเงิน + เพิ่มไอเทมเข้ากระเป๋าทันที
             </div>
 
             <div class="modal-actions">
@@ -239,7 +258,7 @@ function getItemIcon($name) {
     </div>
 
     <script>
-        window.userCoinBalance = <?=json_encode($coinBalance)?>;
+        window.userCoinBalance = <?= json_encode($coin_balance) ?>;
     </script>
     <script src="assets/js/shop.js"></script>
 </body>

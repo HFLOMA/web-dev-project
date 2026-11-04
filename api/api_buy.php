@@ -3,187 +3,122 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/connect.php';
 
-error_reporting(0);
-ini_set('display_errors', 0);
-
+// เช็ค session ล็อกอิน
 if (empty($_SESSION["user_id"])) {
     echo json_encode(["success" => false, "message" => "กรุณาเข้าสู่ระบบก่อน"]);
     exit;
 }
 
-$userId = intval($_SESSION["user_id"]);
-$itemId = isset($_POST["item_id"]) ? intval($_POST["item_id"]) : 0;
-$qty    = isset($_POST["qty"]) ? intval($_POST["qty"]) : 1;
+$user_id = intval($_SESSION["user_id"]);
+$item_id = intval($_POST["item_id"] ?? 0);
+$qty     = intval($_POST["qty"] ?? 1);
 
-if ($itemId <= 0 || $qty <= 0) {
+if ($item_id <= 0 || $qty <= 0) {
     echo json_encode(["success" => false, "message" => "จำนวนสินค้าไม่ถูกต้อง"]);
     exit;
 }
 
 try {
     // ดึงข้อมูลไอเทม
-    $stmtItem = $pdo->prepare("SELECT id, name, description, price, max_limit, is_active FROM paceup__items WHERE id = ? AND is_active = 1");
-    $stmtItem->execute([$itemId]);
-    $item = $stmtItem->fetch();
+    $stmt = $pdo->prepare("SELECT * FROM paceup__items WHERE id = ? AND is_active = 1");
+    $stmt->execute([$item_id]);
+    $item = $stmt->fetch();
 
     if (!$item) {
         echo json_encode(["success" => false, "message" => "ไม่พบไอเทมนี้ในระบบ"]);
         exit;
     }
 
-    if (!empty($item["max_limit"]) && $qty > $item["max_limit"]) {
-        echo json_encode(["success" => false, "message" => "ซื้อได้ไม่เกินครั้งละ " . $item["max_limit"] . " ชิ้น"]);
-        exit;
-    }
+    $item_name = $item["name"];
+    $price     = floatval($item["price"]);
+    $limit     = intval($item["max_limit"] ?? 5);
 
-    $totalPrice = floatval($item["price"]) * $qty;
-
-    // ดึงข้อมูลผู้ใช้
-    $stmtUser = $pdo->prepare("SELECT id, name, shield_balance, freeze_balance, current_streak FROM paceup__users WHERE id = ?");
-    $stmtUser->execute([$userId]);
-    $user = $stmtUser->fetch();
+    // ดึงข้อมูลผู้ใช้เพื่อเช็คเหรียญและจำนวนไอเทมเดิม
+    $stmt = $pdo->prepare("SELECT * FROM paceup__users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
 
     if (!$user) {
         echo json_encode(["success" => false, "message" => "ไม่พบข้อมูลผู้ใช้"]);
         exit;
     }
 
-    // ตรวจสอบยอดเงิน
-    $currentCoin = 150.00;
-    $hasCoinCol = false;
-    try {
-        $stmtCoin = $pdo->prepare("SELECT coin_balance FROM paceup__users WHERE id = ?");
-        $stmtCoin->execute([$userId]);
-        $coinRow = $stmtCoin->fetch();
-        $hasCoinCol = true;
-
-        if ($coinRow && $coinRow["coin_balance"] !== null) {
-            $currentCoin = floatval($coinRow["coin_balance"]);
-        } else {
-            $pdo->prepare("UPDATE paceup__users SET coin_balance = 150.00 WHERE id = ?")->execute([$userId]);
-            $currentCoin = 150.00;
-        }
-    } catch (Throwable $eCol) {
-        try {
-            $pdo->exec("ALTER TABLE paceup__users ADD COLUMN coin_balance DECIMAL(10,2) NOT NULL DEFAULT 150.00");
-            $pdo->prepare("UPDATE paceup__users SET coin_balance = 150.00 WHERE id = ?")->execute([$userId]);
-            $hasCoinCol = true;
-            $currentCoin = 150.00;
-        } catch (Throwable $eAlter) {
-            $hasCoinCol = false;
-        }
+    // เช็คจำนวนไอเทมที่มีอยู่ในกระเป๋า
+    $in_bag = 0;
+    if ($item_id == 1) {
+        $in_bag = intval($user["shield_balance"] ?? 0);
+    } else if ($item_id == 2) {
+        $in_bag = intval($user["freeze_balance"] ?? 0);
+    } else if ($item_id == 3) {
+        $in_bag = intval($user["insurance_balance"] ?? 0);
     }
 
-    // เช็คเงินพอซื้อไหม
-    if ($currentCoin < $totalPrice) {
-        echo json_encode([
-            "success" => false,
-            "message" => "เหรียญไม่พอซื้อ (มี " . number_format($currentCoin, 0) . " เหรียญ แต่ต้องใช้ " . number_format($totalPrice, 0) . " เหรียญ)"
-        ]);
+    // ตรวจสอบ limit ในกระเป๋า
+    if ($in_bag >= $limit) {
+        echo json_encode(["success" => false, "message" => "ช่องเก็บของเต็ม: คุณมี $item_name ครบ $limit ชิ้นแล้ว"]);
+        exit;
+    }
+
+    if ($in_bag + $qty > $limit) {
+        $can_buy = $limit - $in_bag;
+        echo json_encode(["success" => false, "message" => "สามารถซื้อ $item_name ได้อีกเพียง $can_buy ชิ้น"]);
+        exit;
+    }
+
+    $total_price = $price * $qty;
+    $coin = floatval($user["coin_balance"] ?? 0);
+
+    // เช็คว่าเหรียญพอไหม
+    if ($coin < $total_price) {
+        echo json_encode(["success" => false, "message" => "เหรียญไม่พอซื้อไอเทมนี้"]);
         exit;
     }
 
     $pdo->beginTransaction();
 
-    // ตัดเงิน
-    if ($hasCoinCol) {
-        $stmtDeduct = $pdo->prepare("UPDATE paceup__users SET coin_balance = COALESCE(coin_balance, 150.00) - ? WHERE id = ?");
-        $stmtDeduct->execute([$totalPrice, $userId]);
+    // ตัดเหรียญผู้ใช้
+    $stmt = $pdo->prepare("UPDATE paceup__users SET coin_balance = coin_balance - ? WHERE id = ?");
+    $stmt->execute([$total_price, $user_id]);
+
+    // เพิ่มไอเทมตามประเภท
+    if ($item_id == 1) {
+        $pdo->prepare("UPDATE paceup__users SET shield_balance = shield_balance + ? WHERE id = ?")->execute([$qty, $user_id]);
+    } else if ($item_id == 2) {
+        $pdo->prepare("UPDATE paceup__users SET freeze_balance = freeze_balance + ? WHERE id = ?")->execute([$qty, $user_id]);
+    } else if ($item_id == 3) {
+        $pdo->prepare("UPDATE paceup__users SET insurance_balance = insurance_balance + ? WHERE id = ?")->execute([$qty, $user_id]);
     }
 
-    // เพิ่มสิทธิ์ไอเทม
-    $itemName = $item["name"];
-    if (stripos($itemName, 'shield') !== false || stripos($itemName, 'โล่') !== false) {
-        $shieldAdd = 1 * $qty;
-        $stmtShield = $pdo->prepare("UPDATE paceup__users SET shield_balance = COALESCE(shield_balance, 0) + ? WHERE id = ?");
-        $stmtShield->execute([$shieldAdd, $userId]);
-    } else if (stripos($itemName, 'repair') !== false || stripos($itemName, 'ซ่อม') !== false) {
-        $stmtRepair = $pdo->prepare("UPDATE paceup__users SET current_streak = COALESCE(current_streak, 0) + ? WHERE id = ?");
-        $stmtRepair->execute([$qty, $userId]);
+    // บันทึกคำสั่งซื้อ
+    $stmt = $pdo->prepare("INSERT INTO paceup__orders (user_id, total_price, status, created_at) VALUES (?, ?, 'completed', NOW())");
+    $stmt->execute([$user_id, $total_price]);
+    $order_id = $pdo->lastInsertId();
 
-        try {
-            $stmtUsage = $pdo->prepare("INSERT INTO paceup__item_usages (user_id, item_id, usage_type, used_at) VALUES (?, ?, 'repair', NOW())");
-            $stmtUsage->execute([$userId, $itemId]);
-        } catch (Throwable $eU) {}
-    } else if (stripos($itemName, 'insurance') !== false || stripos($itemName, 'ประกัน') !== false) {
-        $stmtIns = $pdo->prepare("UPDATE paceup__users SET freeze_balance = COALESCE(freeze_balance, 0) + ? WHERE id = ?");
-        $stmtIns->execute([$qty, $userId]);
-
-        try {
-            $stmtUsage = $pdo->prepare("INSERT INTO paceup__item_usages (user_id, item_id, usage_type, used_at) VALUES (?, ?, 'insurance', NOW())");
-            $stmtUsage->execute([$userId, $itemId]);
-        } catch (Throwable $eU) {}
-    }
-
-    // บันทึก order
-    $orderId = 0;
-    try {
-        $stmtOrder = $pdo->prepare("INSERT INTO paceup__orders (user_id, total_price, status, created_at) VALUES (?, ?, 'completed', NOW())");
-        $stmtOrder->execute([$userId, $totalPrice]);
-        $orderId = $pdo->lastInsertId();
-    } catch (Throwable $eOrder) {
-        $stmtMax = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 FROM paceup__orders");
-        $orderId = intval($stmtMax->fetchColumn());
-        $stmtOrder = $pdo->prepare("INSERT INTO paceup__orders (id, user_id, total_price, status, created_at) VALUES (?, ?, ?, 'completed', NOW())");
-        $stmtOrder->execute([$orderId, $userId, $totalPrice]);
-    }
-
-    if (!$orderId || intval($orderId) === 0) {
-        $stmtLast = $pdo->prepare("SELECT id FROM paceup__orders WHERE user_id = ? ORDER BY id DESC LIMIT 1");
-        $stmtLast->execute([$userId]);
-        $orderId = $stmtLast->fetchColumn();
-    }
-
-    // บันทึก order_items
-    if ($orderId) {
-        try {
-            $stmtOrderItem = $pdo->prepare("INSERT INTO paceup__order_items (order_id, item_id, qty) VALUES (?, ?, ?)");
-            $stmtOrderItem->execute([$orderId, $itemId, $qty]);
-        } catch (Throwable $eOi) {
-            $stmtMaxOi = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 FROM paceup__order_items");
-            $nextOiId = intval($stmtMaxOi->fetchColumn());
-            $stmtOrderItem = $pdo->prepare("INSERT INTO paceup__order_items (id, order_id, item_id, qty) VALUES (?, ?, ?, ?)");
-            $stmtOrderItem->execute([$nextOiId, $orderId, $itemId, $qty]);
-        }
-    }
+    // บันทึกรายการสินค้าในคำสั่งซื้อ
+    $stmt = $pdo->prepare("INSERT INTO paceup__order_items (order_id, item_id, qty) VALUES (?, ?, ?)");
+    $stmt->execute([$order_id, $item_id, $qty]);
 
     $pdo->commit();
 
-    // ดึงยอดเงินล่าสุด
-    $latestCoin = $currentCoin - $totalPrice;
-    $latestShield = intval($user["shield_balance"]);
-
-    try {
-        $stmtLatest = $pdo->prepare("SELECT coin_balance, shield_balance FROM paceup__users WHERE id = ?");
-        $stmtLatest->execute([$userId]);
-        $latestUser = $stmtLatest->fetch();
-        if ($latestUser) {
-            if ($latestUser["coin_balance"] !== null) {
-                $latestCoin = floatval($latestUser["coin_balance"]);
-            }
-            $latestShield = intval($latestUser["shield_balance"]);
-        }
-    } catch (Throwable $e) {}
+    $new_coin = $coin - $total_price;
+    $new_inv  = $in_bag + $qty;
 
     echo json_encode([
-        "success"     => true,
-        "message"     => "สั่งซื้อสำเร็จเรียบร้อย",
-        "item_name"   => $item["name"],
-        "qty"         => $qty,
-        "total_price" => $totalPrice,
-        "user_id"     => $userId,
-        "user_name"   => $user["name"],
-        "new_coin"    => $latestCoin,
-        "new_shield"  => $latestShield
+        "success"       => true,
+        "message"       => "สั่งซื้อสำเร็จเรียบร้อย",
+        "item_name"     => $item_name,
+        "qty"           => $qty,
+        "total_price"   => $total_price,
+        "new_coin"      => $new_coin,
+        "new_shield"    => ($item_id == 1 ? $new_inv : intval($user["shield_balance"] ?? 0)),
+        "new_repair"    => ($item_id == 2 ? $new_inv : intval($user["freeze_balance"] ?? 0)),
+        "new_insurance" => ($item_id == 3 ? $new_inv : intval($user["insurance_balance"] ?? 0))
     ]);
 
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    echo json_encode([
-        "success" => false,
-        "message" => "เกิดข้อผิดพลาด: " . $e->getMessage()
-    ]);
+    echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาด: " . $e->getMessage()]);
 }
 ?>

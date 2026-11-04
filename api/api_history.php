@@ -3,162 +3,233 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/connect.php';
 
-error_reporting(0);
-ini_set('display_errors', 0);
-
+// เช็ค session
 if (empty($_SESSION["user_id"])) {
     echo json_encode(["success" => false, "message" => "กรุณาเข้าสู่ระบบก่อน"]);
     exit;
 }
 
-$userId = intval($_SESSION["user_id"]);
+$user_id = intval($_SESSION["user_id"]);
 
-// รับค่าตัวกรองและเลขหน้า
-$period = isset($_GET["period"]) ? trim($_GET["period"]) : "all";
-$type   = isset($_GET["type"])   ? trim($_GET["type"])   : "all";
-$page   = isset($_GET["page"])   ? max(1, intval($_GET["page"])) : 1;
+// รับค่าตัวกรองและหน้า
+$period = trim($_GET["period"] ?? "all");
+$type   = trim($_GET["type"] ?? "all");
+$page   = max(1, intval($_GET["page"] ?? 1));
 $limit  = 4;
 
-// ฟังก์ชันแปลงวันที่ภาษาไทยสั้น
+// ฟังก์ชันแปลงวันที่เป็นภาษาไทยสั้นๆ เช่น 15 พ.ย.
 if (!function_exists('formatThaiShortDate')) {
     function formatThaiShortDate($dateStr) {
         if (!$dateStr) return "-";
-        $thaiMonths = [
+        $months = [
             1 => 'ม.ค.', 2 => 'ก.พ.', 3 => 'มี.ค.', 4 => 'เม.ย.',
             5 => 'พ.ค.', 6 => 'มิ.ย.', 7 => 'ก.ค.', 8 => 'ส.ค.',
             9 => 'ก.ย.', 10 => 'ต.ค.', 11 => 'พ.ย.', 12 => 'ธ.ค.'
         ];
-        $time = strtotime($dateStr);
-        if (!$time) return "-";
-        $day = date('j', $time);
-        $month = $thaiMonths[intval(date('n', $time))];
-        return "$day $month";
+        $t = strtotime($dateStr);
+        if (!$t) return "-";
+        $d = date('j', $t);
+        $m = $months[intval(date('n', $t))];
+        return "$d $m";
     }
 }
 
 try {
-    // เงื่อนไขสำหรับ KPI
-    $kpiWhere = ["o.user_id = ?"];
-    $kpiParams = [$userId];
+    // เงื่อนไขเวลาสำหรับคำนวณ KPI
+    $where = ["o.user_id = ?"];
+    $params = [$user_id];
 
     if ($period === "7") {
-        $kpiWhere[] = "o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+        $where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)";
     } else if ($period === "30") {
-        $kpiWhere[] = "o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+        $where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)";
     }
-    $kpiWhereSql = implode(" AND ", $kpiWhere);
+    $where_sql = implode(" AND ", $where);
 
     // ยอดใช้จ่ายรวม
-    $stmtSpent = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders o WHERE $kpiWhereSql AND o.status = 'completed'");
-    $stmtSpent->execute($kpiParams);
-    $totalSpent = floatval($stmtSpent->fetchColumn());
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders o WHERE $where_sql AND o.status = 'completed'");
+    $stmt->execute($params);
+    $total_spent = floatval($stmt->fetchColumn());
 
-    // จำนวนชิ้นไอเทมที่ซื้อ
-    $stmtQty = $pdo->prepare("SELECT COALESCE(SUM(oi.qty), 0) 
+    // จำนวนชิ้นที่ซื้อ
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(oi.qty), 0) 
         FROM paceup__orders o 
         JOIN paceup__order_items oi ON o.id = oi.order_id 
-        WHERE $kpiWhereSql AND o.status = 'completed'");
-    $stmtQty->execute($kpiParams);
-    $totalItems = intval($stmtQty->fetchColumn());
-
-    if ($totalItems === 0 && $totalSpent > 0) {
-        $stmtOrderCount = $pdo->prepare("SELECT COUNT(*) FROM paceup__orders o WHERE $kpiWhereSql AND o.status = 'completed'");
-        $stmtOrderCount->execute($kpiParams);
-        $totalItems = intval($stmtOrderCount->fetchColumn());
-    }
+        WHERE $where_sql AND o.status = 'completed'");
+    $stmt->execute($params);
+    $total_items = intval($stmt->fetchColumn());
 
     // ยอดเติมเงินรวม
-    $stmtTopup = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders o WHERE $kpiWhereSql AND o.status = 'topup'");
-    $stmtTopup->execute($kpiParams);
-    $totalTopup = floatval($stmtTopup->fetchColumn());
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders o WHERE $where_sql AND o.status = 'topup'");
+    $stmt->execute($params);
+    $total_topup = floatval($stmt->fetchColumn());
 
-    // ไอเทมขายดีสุด
-    $stmtBest = $pdo->prepare("SELECT i.name, SUM(oi.qty) AS total_qty
+    // ไอเทมที่ขายดีสุด
+    $stmt = $pdo->prepare("SELECT i.name, SUM(oi.qty) AS total_qty
         FROM paceup__orders o
         JOIN paceup__order_items oi ON o.id = oi.order_id
         JOIN paceup__items i ON oi.item_id = i.id
-        WHERE $kpiWhereSql AND o.status = 'completed'
+        WHERE $where_sql AND o.status = 'completed'
         GROUP BY i.id, i.name
         ORDER BY total_qty DESC
         LIMIT 1");
-    $stmtBest->execute($kpiParams);
-    $bestItem = $stmtBest->fetch();
-    $bestItemName = $bestItem ? $bestItem["name"] : "";
+    $stmt->execute($params);
+    $best = $stmt->fetch();
+    $best_seller = $best ? $best["name"] : "ยังไม่มีข้อมูล";
 
-    if (!$bestItemName && $totalSpent > 0) {
-        $stmtRecent = $pdo->prepare("SELECT i.name 
-            FROM paceup__orders o
-            JOIN paceup__order_items oi ON o.id = oi.order_id
-            JOIN paceup__items i ON oi.item_id = i.id
-            WHERE o.user_id = ? AND o.status = 'completed'
-            ORDER BY o.id DESC LIMIT 1");
-        $stmtRecent->execute([$userId]);
-        $recentItem = $stmtRecent->fetch();
-        if ($recentItem) {
-            $bestItemName = $recentItem["name"];
-        } else {
-            $firstItem = $pdo->query("SELECT name FROM paceup__items ORDER BY id ASC LIMIT 1")->fetch();
-            $bestItemName = $firstItem ? $firstItem["name"] : "Streak Shield";
-        }
-    }
-    if (!$bestItemName) {
-        $bestItemName = "ยังไม่มีข้อมูล";
-    }
+    // ข้อมูลสำหรับวาดกราฟแท่ง (Chart.js)
+    $status_cond = ($type === 'topup') ? "status = 'topup'" : "status = 'completed'";
+    $dataset_label = ($type === 'topup') ? "ยอดเติมเงิน (เหรียญ)" : "ยอดใช้จ่าย (เหรียญ)";
+    $chart_heading = ($type === 'topup') ? "ยอดเติมเงิน" : "ยอดใช้จ่าย";
 
-    // กราฟแท่งรายสัปดาห์
-    $weeklyLabels = ["ส.1", "ส.2", "ส.3", "ส.4", "ส.5", "ส.นี้"];
-    $weeklyData   = [0, 0, 0, 0, 0, 0];
+    $chart_labels = [];
+    $chart_data   = [];
 
-    try {
-        $stmtWeekly = $pdo->prepare("SELECT 
-                FLOOR(DATEDIFF(NOW(), created_at) / 7) AS week_ago,
-                SUM(total_price) AS week_spent
-            FROM paceup__orders
-            WHERE user_id = ? AND status = 'completed' AND created_at >= DATE_SUB(NOW(), INTERVAL 42 DAY)
-            GROUP BY FLOOR(DATEDIFF(NOW(), created_at) / 7)
-            ORDER BY week_ago DESC");
-        $stmtWeekly->execute([$userId]);
-        $weekRows = $stmtWeekly->fetchAll();
-
-        foreach ($weekRows as $row) {
-            $weekAgo = intval($row["week_ago"]);
-            if ($weekAgo >= 0 && $weekAgo < 6) {
-                $index = 5 - $weekAgo;
-                $weeklyData[$index] = floatval($row["week_spent"]);
-            }
-        }
-    } catch (Throwable $eChart) {}
-
-    if (array_sum($weeklyData) == 0) {
-        $weeklyData = [29, 59, 0, 99, 59, ($totalSpent > 0 ? $totalSpent : 147)];
-    }
-
-    // ตารางรายการคำสั่งซื้อ
-    $tableWhere = ["o.user_id = ?"];
-    $tableParams = [$userId];
+    $thai_days = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+    $thai_months = [
+        1 => 'ม.ค.', 2 => 'ก.พ.', 3 => 'มี.ค.', 4 => 'เม.ย.',
+        5 => 'พ.ค.', 6 => 'มิ.ย.', 7 => 'ก.ค.', 8 => 'ส.ค.',
+        9 => 'ก.ย.', 10 => 'ต.ค.', 11 => 'พ.ย.', 12 => 'ธ.ค.'
+    ];
 
     if ($period === "7") {
-        $tableWhere[] = "o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+        // ย้อนหลัง 7 วันรายวัน
+        $chart_heading .= "รายวัน (7 วันล่าสุด)";
+
+        for ($i = 6; $i >= 0; $i--) {
+            $t = strtotime("today -$i day");
+            $d_date  = date('Y-m-d', $t);
+            $d_name  = $thai_days[intval(date('w', $t))];
+            $d_num   = date('j', $t);
+            $d_label = "$d_name $d_num";
+
+            $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders 
+                WHERE user_id = ? AND $status_cond AND DATE(created_at) = ?");
+            $stmt->execute([$user_id, $d_date]);
+            $spent = floatval($stmt->fetchColumn() ?? 0);
+
+            $chart_labels[] = $d_label;
+            $chart_data[]   = round($spent, 2);
+        }
     } else if ($period === "30") {
-        $tableWhere[] = "o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+        // ย้อนหลัง 4 สัปดาห์
+        $chart_heading .= "รอบ 4 สัปดาห์ (30 วันล่าสุด)";
+
+        $intervals = [
+            [29, 22],
+            [21, 15],
+            [14, 8],
+            [7, 0]
+        ];
+
+        foreach ($intervals as $days) {
+            $start_t = strtotime("today -{$days[0]} day");
+            $end_t   = strtotime("today -{$days[1]} day");
+
+            $start_str = date('Y-m-d 00:00:00', $start_t);
+            $end_str   = date('Y-m-d 23:59:59', $end_t);
+
+            $s_d = date('j', $start_t);
+            $s_m = $thai_months[intval(date('n', $start_t))];
+            $e_d = date('j', $end_t);
+            $e_m = $thai_months[intval(date('n', $end_t))];
+
+            $label = ($s_m === $e_m) ? "$s_d - $e_d $e_m" : "$s_d $s_m - $e_d $e_m";
+
+            $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders 
+                WHERE user_id = ? AND $status_cond AND created_at >= ? AND created_at <= ?");
+            $stmt->execute([$user_id, $start_str, $end_str]);
+            $spent = floatval($stmt->fetchColumn() ?? 0);
+
+            $chart_labels[] = $label;
+            $chart_data[]   = round($spent, 2);
+        }
+    } else {
+        // ทั้งหมด: สรุปเป็นรายเดือน
+        $chart_heading .= "รายเดือน (ทั้งหมด)";
+
+        $stmt = $pdo->prepare("SELECT MIN(created_at) FROM paceup__orders WHERE user_id = ? AND $status_cond");
+        $stmt->execute([$user_id]);
+        $min_date = $stmt->fetchColumn();
+
+        $cur_year  = intval(date('Y'));
+        $cur_month = intval(date('n'));
+
+        if ($min_date) {
+            $start_year  = intval(date('Y', strtotime($min_date)));
+            $start_month = intval(date('n', strtotime($min_date)));
+        } else {
+            $start_year  = intval(date('Y', strtotime("-2 month")));
+            $start_month = intval(date('n', strtotime("-2 month")));
+        }
+
+        $slots = [];
+        $y = $start_year;
+        $m = $start_month;
+
+        while ($y < $cur_year || ($y === $cur_year && $m <= $cur_month)) {
+            $slots[] = ['year' => $y, 'month' => $m];
+            $m++;
+            if ($m > 12) {
+                $m = 1;
+                $y++;
+            }
+        }
+
+        while (count($slots) < 3) {
+            $first = $slots[0];
+            $prev_m = $first['month'] - 1;
+            $prev_y = $first['year'];
+            if ($prev_m < 1) {
+                $prev_m = 12;
+                $prev_y--;
+            }
+            array_unshift($slots, ['year' => $prev_y, 'month' => $prev_m]);
+        }
+
+        foreach ($slots as $s) {
+            $y_val = $s['year'];
+            $m_val = $s['month'];
+            $be_year = ($y_val + 543) % 100;
+            $label = $thai_months[$m_val] . " " . $be_year;
+
+            $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders 
+                WHERE user_id = ? AND $status_cond AND YEAR(created_at) = ? AND MONTH(created_at) = ?");
+            $stmt->execute([$user_id, $y_val, $m_val]);
+            $spent = floatval($stmt->fetchColumn() ?? 0);
+
+            $chart_labels[] = $label;
+            $chart_data[]   = round($spent, 2);
+        }
+    }
+
+    // ดึงตารางประวัติคำสั่งซื้อ
+    $table_where = ["o.user_id = ?"];
+    $table_params = [$user_id];
+
+    if ($period === "7") {
+        $table_where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)";
+    } else if ($period === "30") {
+        $table_where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)";
     }
 
     if ($type === "buy") {
-        $tableWhere[] = "o.status = 'completed'";
+        $table_where[] = "o.status IN ('completed', 'pending', 'cancelled')";
     } else if ($type === "topup") {
-        $tableWhere[] = "o.status = 'topup'";
+        $table_where[] = "o.status = 'topup'";
     }
 
-    $tableWhereSql = implode(" AND ", $tableWhere);
+    $table_where_sql = implode(" AND ", $table_where);
 
-    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM paceup__orders o WHERE $tableWhereSql");
-    $stmtCount->execute($tableParams);
-    $totalRows = intval($stmtCount->fetchColumn());
-    $totalPages = max(1, ceil($totalRows / $limit));
+    // นับจำนวนหน้า
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM paceup__orders o WHERE $table_where_sql");
+    $stmt->execute($table_params);
+    $total_rows  = intval($stmt->fetchColumn());
+    $total_pages = max(1, ceil($total_rows / $limit));
+    $offset      = ($page - 1) * $limit;
 
-    $offset = ($page - 1) * $limit;
-
-    $stmtList = $pdo->prepare("SELECT 
+    // รายการของหน้านี้
+    $stmt = $pdo->prepare("SELECT 
             o.id AS order_id,
             o.created_at,
             o.status,
@@ -168,53 +239,62 @@ try {
              JOIN paceup__items i ON oi.item_id = i.id
              WHERE oi.order_id = o.id) AS item_names
         FROM paceup__orders o
-        WHERE $tableWhereSql
+        WHERE $table_where_sql
         ORDER BY o.created_at DESC, o.id DESC
         LIMIT $limit OFFSET $offset");
-    $stmtList->execute($tableParams);
-    $rows = $stmtList->fetchAll();
+    $stmt->execute($table_params);
+    $rows = $stmt->fetchAll();
 
-    $transactionList = [];
+    $transactions = [];
     foreach ($rows as $row) {
-        $isTopup = ($row["status"] === "topup");
-        $itemDisplay = !empty($row["item_names"]) ? $row["item_names"] : "ไอเทมดิจิทัล";
-        $title = $isTopup ? "เติมเงิน" : ("ซื้อ " . $itemDisplay);
-        $amountFormatted = ($isTopup ? "+" : "-") . number_format($row["total_price"], 0);
+        $is_topup = ($row["status"] === "topup");
+        $item_name = !empty($row["item_names"]) ? $row["item_names"] : "ไอเทมดิจิทัล";
 
-        $transactionList[] = [
+        if ($is_topup) {
+            $title = "เติมเงิน (จำลอง)";
+            $amount_formatted = "+" . number_format($row["total_price"], 0);
+            $status_label = "สำเร็จ";
+        } else {
+            $title = "ซื้อ " . $item_name;
+            $amount_formatted = "-" . number_format($row["total_price"], 0);
+            $status_label = ($row["status"] === 'completed') ? "สำเร็จ" : $row["status"];
+        }
+
+        $transactions[] = [
             "id"               => $row["order_id"],
             "date"             => formatThaiShortDate($row["created_at"]),
             "title"            => $title,
-            "type"             => $isTopup ? "topup" : "buy",
+            "type"             => $is_topup ? "topup" : "buy",
+            "status"           => $row["status"],
+            "status_label"     => $status_label,
             "amount"           => floatval($row["total_price"]),
-            "amount_formatted" => $amountFormatted
+            "amount_formatted" => $amount_formatted
         ];
     }
 
     echo json_encode([
         "success" => true,
         "kpi" => [
-            "total_spent" => number_format($totalSpent, 0),
-            "total_items" => number_format($totalItems, 0),
-            "total_topup" => number_format($totalTopup, 0),
-            "best_seller" => $bestItemName
+            "total_spent" => number_format($total_spent, 0),
+            "total_items" => number_format($total_items, 0),
+            "total_topup" => number_format($total_topup, 0),
+            "best_seller" => $best_seller
         ],
         "chart" => [
-            "labels" => $weeklyLabels,
-            "data"   => $weeklyData
+            "heading"       => $chart_heading,
+            "dataset_label" => $dataset_label,
+            "labels"        => $chart_labels,
+            "data"          => $chart_data
         ],
         "pagination" => [
             "current_page" => $page,
-            "total_pages"  => $totalPages,
-            "total_rows"   => $totalRows
+            "total_pages"  => $total_pages,
+            "total_rows"   => $total_rows
         ],
-        "transactions" => $transactionList
+        "transactions" => $transactions
     ]);
 
 } catch (Throwable $e) {
-    echo json_encode([
-        "success" => false,
-        "message" => "เกิดข้อผิดพลาด: " . $e->getMessage()
-    ]);
+    echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาด: " . $e->getMessage()]);
 }
 ?>

@@ -1,24 +1,27 @@
 <?php
 require_once "config/connect.php";
+require_once "functions.php";
 
-$userId = intval($_SESSION["user_id"]);
+$user_id = $_SESSION["user_id"] ?? 1;
 
 // ดึงข้อมูลผู้ใช้
-try {
-    $stmtUser = $pdo->prepare("SELECT name, email, coin_balance, shield_balance, current_streak FROM paceup__users WHERE id = ?");
-    $stmtUser->execute([$userId]);
-    $user = $stmtUser->fetch();
-} catch (Throwable $e) {
-    $stmtUser = $pdo->prepare("SELECT name, email, shield_balance, current_streak FROM paceup__users WHERE id = ?");
-    $stmtUser->execute([$userId]);
-    $user = $stmtUser->fetch();
-    if ($user) $user['coin_balance'] = 150.00;
+$stmt = $pdo->prepare("SELECT * FROM paceup__users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+
+if (!$user) {
+    $user = [
+        "name" => "ผู้ใช้งาน",
+        "coin_balance" => 150,
+        "shield_balance" => 0,
+        "freeze_balance" => 0,
+        "insurance_balance" => 0,
+        "current_streak" => 0
+    ];
 }
 
-$userName      = $user ? $user["name"] : "ผู้ใช้งาน";
-$coinBalance   = $user ? floatval($user["coin_balance"] ?? 150.00) : 150.00;
-$shieldBalance = $user ? intval($user["shield_balance"] ?? 0) : 0;
-$currentStreak = $user ? intval($user["current_streak"] ?? 0) : 0;
+$user_name    = $user["name"] ?? "ผู้ใช้งาน";
+$coin_balance = floatval($user["coin_balance"] ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -26,6 +29,7 @@ $currentStreak = $user ? intval($user["current_streak"] ?? 0) : 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ประวัติธุรกรรม &amp; สถิติ - PaceUp</title>
+    <link rel="stylesheet" href="css/navbar.css?v=<?= time() ?>">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,44 +38,7 @@ $currentStreak = $user ? intval($user["current_streak"] ?? 0) : 0;
 </head>
 <body>
 
-    <!-- Navbar -->
-    <header>
-        <!-- <div class="pc-navbar">
-            <a href="shop.php" class="brand-box">
-                <div class="logo-badge">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                </div>
-                <div class="brand-text">Pace<span>Up</span></div>
-            </a>
-
-            <nav class="nav-menu">
-                <ul>
-                    <li><a href="#">หน้าแรก</a></li>
-                    <li><a href="#">เช็คอินวิ่ง</a></li>
-                    <li><a href="#">เป้าหมาย</a></li>
-                    <li><a href="#">จัดอันดับ</a></li>
-                    <li><a href="shop.php">ร้านค้า</a></li>
-                    <li class="active"><a href="history.php">ประวัติ &amp; สถิติ</a></li>
-                </ul>
-            </nav>
-
-            <div class="user-status-bar">
-                <div class="status-chip chip-streak">
-                    สตรีค: <?=$currentStreak?> วัน
-                </div>
-                <div class="status-chip chip-shield">
-                    โล่: <span><?=$shieldBalance?></span>
-                </div>
-                <div class="status-chip chip-coin">
-                    เหรียญ: <span><?=number_format($coinBalance, 0)?></span>
-                </div>
-                <div class="chip-user">
-                    <div class="user-avatar-circle"><?=mb_substr($userName, 0, 1, 'UTF-8')?></div>
-                    <span><?=$userName?> <small style="opacity: 0.6; font-size: 11px;">(ID: <?=$userId?>)</small></span>
-                </div>
-            </div>
-        </div> -->
-    </header>
+    <?php include "header.php"; ?>
 
     <main class="main-container">
 
@@ -134,7 +101,7 @@ $currentStreak = $user ? intval($user["current_streak"] ?? 0) : 0;
             
             <div class="panel-card">
                 <div class="panel-head">
-                    <h2>ยอดใช้จ่ายรายสัปดาห์</h2>
+                    <h2 id="chartHeading">ยอดใช้จ่ายรายสัปดาห์</h2>
                     <span style="font-size: 12px; color: #94a3b8; font-weight: 600;">(กราฟแท่ง Chart.js)</span>
                 </div>
                 <div style="height: 300px; position: relative;">
@@ -173,7 +140,7 @@ $currentStreak = $user ? intval($user["current_streak"] ?? 0) : 0;
     </main>
 
     <footer>
-        <p>PaceUp - ระบบติดตามการวิ่งและร้านค้าไอเทม (Web Programming Project)</p>
+        <p>© 2026 PaceUp. Keep your streak alive.</p>
     </footer>
 
     <script src="assets/js/history.js"></script>

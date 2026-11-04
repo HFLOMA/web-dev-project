@@ -1,0 +1,175 @@
+/* ============================================================
+   PaceUp - Shared Navbar Styles (header.php)
+   ใช้ร่วมกันทุกหน้า: index, checkin, shop, history
+   ============================================================ */
+
+:root {
+  --main: #e8603c;        
+  --main-soft: #ffe6dc;  
+  --bg: #f5f5f7;        
+  --card: #ffffff;        
+  --text: #1c1c1e;       
+  --muted: #8e8e93;       
+  --line: #e5e5ea;       
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* แถบบน */
+header {
+  background: var(--card, #ffffff);
+  border-bottom: 1px solid var(--line, #e5e5ea);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* โลโก้ชิดซ้าย ปุ่มชิดขวา วางกึ่งกลางหน้าจอ max-width: 960px */
+header .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* โลโก้ PaceUp คำว่า Up เป็นสีส้ม */
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text, #1c1c1e);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.logo span {
+  color: var(--main, #e8603c);
+}
+
+/* กลุ่มปุ่มขวา relative ให้เมนู ☰ วางตำแหน่งจากกลุ่มนี้ */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.nav-right a:not(.avatar) {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
+/* ปุ่ม ☰ เอากรอบกับพื้นออก */
+.nav-right > button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+/* ไอคอนเส้น รถเข็น กับ ☰ */
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* วงกลมตัวแรกของชื่อ ปุ่มโปรไฟล์ จัดกึ่งกลางเป๊ะทั้งแนวตั้งและแนวนอน */
+.nav-right .avatar,
+.avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 0 !important;
+  margin: 0;
+  box-sizing: border-box;
+  line-height: 1;
+  background: var(--main-soft, #ffe6dc);
+  color: var(--main, #e8603c);
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.nav-right .avatar:hover,
+.avatar:hover {
+  transform: scale(1.05);
+}
+
+/* กล่องเมนูที่เด้งลงมาใต้ ☰ */
+#menu {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  z-index: 1000;
+  min-width: 180px;
+  background: var(--card, #ffffff);
+  border: 1px solid var(--line, #e5e5ea);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+#menu a {
+  display: block;
+  padding: 12px 16px;
+  color: var(--text, #1c1c1e);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* เส้นคั่นระหว่างลิงก์ ลิงก์แรกไม่มีเส้น */
+#menu a + a {
+  border-top: 1px solid var(--line, #e5e5ea);
+}
+
+/* เอาเมาส์ชี้แล้วพื้นเปลี่ยนสี */
+#menu a:hover {
+  background: var(--bg, #f5f5f7);
+}
+
+#menu a.danger {
+  color: #e5484d;
+}
+
+#menu a.danger:hover {
+  background: #fef2f2;
+}
+
+/* แสดงบนจอใหญ่ ซ่อนบนมือถือ */
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-only {
+    display: inline;
+  }
+}
+
+.muted {
+  color: var(--muted, #8e8e93);
+}

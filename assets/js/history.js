@@ -41,10 +41,16 @@ function loadHistoryData(page) {
                             totalText.innerText = "ทั้งหมด " + response.pagination.total_rows + " รายการ";
                         }
 
+                        // อัปเดตหัวข้อกราฟ
+                        let chartHeading = document.getElementById("chartHeading");
+                        if (chartHeading && response.chart && response.chart.heading) {
+                            chartHeading.innerText = response.chart.heading;
+                        }
+
                         // วาดกราฟ
                         try {
                             if (typeof Chart !== "undefined" && response.chart) {
-                                updateWeeklyChart(response.chart.labels, response.chart.data);
+                                updateWeeklyChart(response.chart.labels, response.chart.data, response.chart.dataset_label);
                             }
                         } catch (chartErr) {
                             console.warn(chartErr);
@@ -72,7 +78,7 @@ function loadHistoryData(page) {
 }
 
 // วาดกราฟแท่ง
-function updateWeeklyChart(labels, dataValues) {
+function updateWeeklyChart(labels, dataValues, datasetLabel) {
     let canvas = document.getElementById("expenseChart");
     if (!canvas) return;
 
@@ -91,18 +97,27 @@ function updateWeeklyChart(labels, dataValues) {
         data: {
             labels: labels,
             datasets: [{
-                label: 'ยอดใช้จ่าย (เหรียญ)',
+                label: datasetLabel || 'ยอดใช้จ่าย (เหรียญ)',
                 data: dataValues,
                 backgroundColor: backgroundColors,
                 borderRadius: 6,
-                barThickness: 32
+                maxBarThickness: 42
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let val = Number(context.raw) || 0;
+                            let label = datasetLabel || 'ยอดใช้จ่าย';
+                            return label + ': ' + val.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' เหรียญ';
+                        }
+                    }
+                }
             },
             scales: {
                 x: {
@@ -112,7 +127,12 @@ function updateWeeklyChart(labels, dataValues) {
                 y: {
                     beginAtZero: true,
                     grid: { color: '#f1f5f9' },
-                    ticks: { font: { family: 'Sarabun', size: 12 } }
+                    ticks: {
+                        font: { family: 'Sarabun', size: 12 },
+                        callback: function(val) {
+                            return Number(val).toLocaleString('th-TH');
+                        }
+                    }
                 }
             }
         }
@@ -132,13 +152,28 @@ function renderTransactionTable(transactions) {
     let html = "";
     for (let i = 0; i < transactions.length; i++) {
         let tx = transactions[i];
-        let isTopup = (tx.type === "topup");
-        let amountClass = isTopup ? "amount-plus" : "amount-minus";
+        let status = tx.status || "completed";
+        let statusClass = "badge-" + status;
+        let amountClass = "";
+        let strikeStyle = "";
+
+        if (status === "topup") {
+            amountClass = "amount-plus";
+        } else if (status === "completed") {
+            amountClass = "amount-minus";
+        } else if (status === "cancelled") {
+            amountClass = "amount-muted";
+            strikeStyle = "style='text-decoration: line-through; opacity: 0.6;'";
+        } else if (status === "pending") {
+            amountClass = "amount-pending";
+        } else {
+            amountClass = "amount-minus";
+        }
 
         html += "<tr>";
         html += "  <td class='tx-date'>" + tx.date + "</td>";
-        html += "  <td class='tx-title'>" + tx.title + "</td>";
-        html += "  <td class='tx-amount " + amountClass + "'>" + tx.amount_formatted + "</td>";
+        html += "  <td class='tx-title'>" + tx.title + " <span class='badge-status " + statusClass + "'>" + tx.status_label + "</span></td>";
+        html += "  <td class='tx-amount " + amountClass + "' " + strikeStyle + ">" + tx.amount_formatted + "</td>";
         html += "</tr>";
     }
 

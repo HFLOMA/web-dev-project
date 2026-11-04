@@ -43,7 +43,7 @@ function changeQty(itemId, change, maxLimit) {
 }
 
 // เปิด modal ยืนยันการซื้อ
-function openBuyModal(itemId, itemName, price) {
+function openBuyModal(itemId, itemName, price, itemImg) {
     let qtyInput = document.getElementById("qty_" + itemId);
     let qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
     let numericPrice = parseFloat(price) || 0;
@@ -60,6 +60,16 @@ function openBuyModal(itemId, itemName, price) {
     document.getElementById("modalItemTitle").innerText = itemName + " × " + qty;
     document.getElementById("modalItemPrice").innerText = totalPrice.toLocaleString() + " เหรียญ";
     
+    let imgElem = document.getElementById("modalItemImg");
+    if (imgElem) {
+        if (itemImg) {
+            imgElem.src = itemImg;
+            imgElem.style.display = "block";
+        } else {
+            imgElem.style.display = "none";
+        }
+    }
+
     let remainElement = document.getElementById("modalRemainCoin");
     let confirmBtn = document.getElementById("btnConfirmBuy");
     let warningText = document.getElementById("coinWarningText");
@@ -111,9 +121,15 @@ function submitPurchase() {
                         if (shieldElem) shieldElem.innerText = response.new_shield;
 
                         let shieldText = document.getElementById("balanceShieldText");
-                        if (shieldText) shieldText.innerText = response.new_shield;
+                        if (shieldText && response.new_shield !== undefined) shieldText.innerText = response.new_shield;
 
-                        closeBuyModal();
+                        let repairText = document.getElementById("balanceRepairText");
+                        if (repairText && response.new_repair !== undefined) repairText.innerText = response.new_repair;
+
+                        let insuranceText = document.getElementById("balanceInsuranceText");
+                        if (insuranceText && response.new_insurance !== undefined) insuranceText.innerText = response.new_insurance;
+
+                        closeBuyModal(); location.reload();
                     } else {
                         alert(response.message);
                     }

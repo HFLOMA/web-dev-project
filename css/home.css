@@ -1,3 +1,4 @@
+@import "navbar.css";
 /* 
    สารบัญ
    1. ตัวแปรสี
@@ -94,91 +95,7 @@ img {
 }
 
 
-/* 4. แถบบน กับ เมนู ☰  [โลโก้] ... [ไอเทม] [รถเข็น] [โปรไฟล์] [☰] */
-header {
-  background: var(--card);
-  border-bottom: 1px solid var(--line);
-}
-
-/* [Descendant selector] โลโก้ชิดซ้าย ปุ่มชิดขวา */
-header .container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* โลโก้ PaceUp คำว่า Up เป็นสีส้ม */
-.logo {
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-.logo span {
-  color: var(--main);
-}
-
-/* กลุ่มปุ่มขวา relative ให้เมนู ☰ วางตำแหน่งจากกลุ่มนี้ */
-.nav-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  position: relative;
-}
-
-/* [Child selector] ปุ่ม ☰ เอากรอบกับพื้นออก */
-.nav-right > button {
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-/* ไอคอนเส้น รถเข็น กับ ☰ */
-.icon {
-  display: block;
-  width: 24px;
-  height: 24px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-}
-
-/* วงกลมตัวแรกของชื่อ ปุ่มโปรไฟล์ */
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--main-soft);
-  color: var(--main);
-  font-weight: 700;
-}
-
-/* [ID selector] กล่องเมนูที่เด้งลงมาใต้ ☰ */
-#menu {
-  position: absolute;
-  top: 48px;
-  right: 0;
-  z-index: 10;
-  min-width: 180px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-#menu a {
-  display: block;
-  padding: 12px 16px;
-}
-
-/* [Adjacent sibling selector] เส้นคั่นระหว่างลิงก์ ลิงก์แรกไม่มีเส้น */
-#menu a + a {
-  border-top: 1px solid var(--line);
-}
-
-/* [Pseudo-class] เอาเมาส์ชี้แล้วพื้นเปลี่ยนสี */
-#menu a:hover {
-  background: var(--bg);
-}
-
+/* 4. แถบบน กับ เมนู ☰ -> ย้ายไปไว้ที่ css/navbar.css เพื่อใช้ร่วมกันทุกหน้า */
 
 /* 5. การ์ด กับ ปุ่ม */
 
