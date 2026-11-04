@@ -1,13 +1,29 @@
 <?php
-// สร้าง session เก็บ id
+// ตรวจสอบการล็อกอิน (Session Guard)
 session_start();
+if (empty($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit();
+}
+
 include "connect.php";
 include "functions.php";
 
-$user_id = $_SESSION["user_id"] ?? 1;
+$user_id = intval($_SESSION["user_id"]);
 
+// เช็คสถานะ Streak
 $message = check_streak($pdo, $user_id);
-$user    = get_user($pdo, $user_id);
+
+// ดึงข้อมูลผู้ใช้จากตาราง paceup__users ด้วย PDO
+$stmt = $pdo->prepare("SELECT * FROM paceup__users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+
+// ถ้าไม่พบข้อมูลผู้ใช้ในระบบ ให้กลับไปหน้า login
+if (!$user) {
+    header("Location: login.php");
+    exit();
+}
 
 
 // รวมระยะทางที่วิ่งในสัปดานี้
@@ -221,7 +237,7 @@ $g = get_goal($user);
  <!-- แสดงค่าด้านล่าง ระยะรวม ครั้งทที่เช็คอิน Streak(ปัจจุบัน) -->
   <section class="bignums">
     <div><b class="link"><?= number_format($total["km"] ?? 0, 1) ?></b><span class="muted">กิโลเมตรที่วิ่งไปแล้ว</span></div>
-    <div><b><?= $total["runs"] ?></b><span class="muted">ครั้งที่เช็คอินสำเร็จ</span></div>
+    <div><b><?= number_format($user["coin_balance"] ?? 0, 0) ?></b><span class="muted">เหรียญคงเหลือ</span></div>
     <div><b><?= $user["current_streak"] ?></b><span class="muted">วัน Streak ปัจจุบัน</span></div>
   </section>
 
