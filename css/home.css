@@ -285,8 +285,9 @@ input:invalid:not(:placeholder-shown) {
   color: #e5484d;
 }
 
-/* ช่องเลือกเล็ก เช่น ตัวกรองอันดับ */
-select.small {
+/* ช่องเลือกเล็ก เช่น ตัวกรองอันดับ ช่องค้นชื่อ */
+select.small,
+input.small {
   padding: 6px 10px;
   border: 0;
   border-radius: 8px;

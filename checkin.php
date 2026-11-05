@@ -4,7 +4,12 @@ session_start();
 include "connect.php";
 include "functions.php";
 
-$user_id = $_SESSION["user_id"] ?? 1;   
+// ยังไม่ login เด้งไปหน้า login
+if (empty($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit;
+}
+$user_id = $_SESSION["user_id"];
 
 
 // ส่งผลกลับเป็น JSON แล้วจบเลย

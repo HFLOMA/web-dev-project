@@ -25,6 +25,17 @@ if (!$user) {
     exit();
 }
 
+// ลบเช็คอิน ลบได้แค่ของตัวเอง (user_id ต้องตรง)
+if (isset($_POST["delete_id"])) {
+    $delete_id = $_POST["delete_id"];
+    $stmt = $pdo->prepare("DELETE FROM paceup__check_ins WHERE id = ? AND user_id = ?");
+    $stmt->bindParam(1, $delete_id);
+    $stmt->bindParam(2, $user_id);
+    $stmt->execute();
+    header("Location: index.php");
+    exit();
+}
+
 
 // รวมระยะทางที่วิ่งในสัปดานี้
 $monday = date("Y-m-d", strtotime("monday this week"));
@@ -48,8 +59,9 @@ while ($row = $stmt->fetch()) {
     $run_days[] = $row["day_no"];
 }
 
-//คํานวน เปอร์เซนที่ วิ่งไปแล้ว
-$goal    = $user["target_distance"];
+//คํานวน เปอร์เซนที่ วิ่งไปแล้ว ใช้เป้าตามสูตร ให้ตรงกับแท็บเป้าหมาย
+$g       = get_goal($user);
+$goal    = $g["goal"];
 $percent = $goal > 0 ? min(100, round($week_km / $goal * 100)) : 0;
 $left    = max(0, $goal - $week_km);
 
@@ -62,7 +74,7 @@ $total = $stmt->fetch();
 
 
 //จัดรูป sql  day,distance,minutes,pace,status ตัวอย่าง 17/10 , 6.51, 45,7.0,approved 
-$stmt = $pdo->prepare("SELECT DATE_FORMAT(created_at, '%d/%m') AS day,
+$stmt = $pdo->prepare("SELECT id, DATE_FORMAT(created_at, '%d/%m') AS day,
                       ocr_distance,
                       duration DIV 60 AS minutes,
                       ROUND(duration / 60 / ocr_distance, 1) AS pace,
@@ -74,31 +86,35 @@ $checkins = $stmt->fetchAll();
 
 
 //จัดอันดับตาม ระยาทาง หรือ streak 
+// ค้นหาชื่อ เช่น พิมพ์ "สม" เจอ สมชาย · ไม่พิมพ์ = เห็นทุกคน
 $rank_type = $_GET["rank"] ?? "distance";
+$search    = $_GET["q"] ?? "";
+$like      = "%" . $search . "%";
 if ($rank_type == "streak") {
-    $stmt = $pdo->query("SELECT name, current_streak AS value FROM paceup__users ORDER BY current_streak DESC");
+    $stmt = $pdo->prepare("SELECT name, current_streak AS value FROM paceup__users
+                           WHERE name LIKE ? ORDER BY current_streak DESC");
     $unit = "วัน";
 } else {
-    $stmt = $pdo->query("SELECT `ชื่อผู้ใช้` AS name, `ระยะทางรวม` AS value FROM paceup__view_runner_stats");
+    $stmt = $pdo->prepare("SELECT `ชื่อผู้ใช้` AS name, `ระยะทางรวม` AS value FROM paceup__view_runner_stats
+                           WHERE `ชื่อผู้ใช้` LIKE ?");
     $unit = "กม.";
 }
+$stmt->bindParam(1, $like);
+$stmt->execute();
 $ranking = $stmt->fetchAll();
-
-
-//คํานวน ระยะทาง ที่ ต้อง วิ่งของ user
-$g = get_goal($user);
 
 
 // $message   ข้อความ Streak     เช่น ["approved", "ใช้ Shield ..."] หรือ null ถ้าไม่มีอะไร
 // $user      ข้อมูลผู้ใช้ 1 แถว   เช่น $user["name"], $user["current_streak"], $user["shield_balance"]
 // $week_km   กม. สัปดาห์นี้       เช่น 6.51
 // $run_days  วันที่วิ่งแล้ว        เช่น [1, 3, 5]  (1 = จันทร์ ... 7 = อาทิตย์)
-// $goal      เป้าสัปดาห์ (กม.)     เช่น 50
+// $goal      เป้าสัปดาห์ (กม.)     เช่น 30 (มาจาก $g["goal"])
 // $percent   % ที่ทำได้           เช่น 13
 // $left      กม. ที่เหลือ          เช่น 43.49
 // $total     สถิติรวม            เช่น ["runs" => 3, "km" => 21.78]
-// $checkins  เช็คอินล่าสุด 5 แถว   แต่ละแถวมี day, ocr_distance, minutes, pace, status
+// $checkins  เช็คอินล่าสุด 5 แถว   แต่ละแถวมี id, day, ocr_distance, minutes, pace, status
 // $rank_type แบบอันดับ           "distance" หรือ "streak"
+// $search    คำที่ค้นในอันดับ      เช่น "สม" หรือ "" ถ้าไม่ได้ค้น
 // $unit      หน่วยในอันดับ        "กม." หรือ "วัน"
 // $ranking   ตารางอันดับ          แต่ละแถวมี name, value
 // $g         เป้าตามสูตร          $g["level"], $g["base"], $g["bmi"], $g["bmi_rate"], $g["goal"]
@@ -177,7 +193,7 @@ $g = get_goal($user);
       <h3>เช็คอินล่าสุด</h3>
       <div class="table-wrap">
         <table>
-          <tr><th>วันที่</th><th>ระยะทาง</th><th>เวลา</th><th>Pace</th><th>สถานะ</th></tr>
+          <tr><th>วันที่</th><th>ระยะทาง</th><th>เวลา</th><th>Pace</th><th>สถานะ</th><th></th></tr>
           <?php foreach ($checkins as $c): ?>
             <tr>
               <td><?= $c["day"] ?></td>
@@ -185,6 +201,13 @@ $g = get_goal($user);
               <td><?= $c["minutes"] ?> นาที</td>
               <td><?= $c["pace"] ?> นาที/กม.</td>
               <td><span class="pill" data-status="<?= $c["status"] ?>"><?= $c["status"] == "approved" ? "ผ่าน" : "ไม่ผ่าน" ?></span></td>
+              <!-- ปุ่มลบ ส่ง id ไปลบ ถามยืนยันก่อน -->
+              <td>
+                <form method="post" onsubmit="return confirm('ลบเช็คอินวันที่ <?= $c["day"] ?> ?')">
+                  <input type="hidden" name="delete_id" value="<?= $c["id"] ?>">
+                  <button class="btn light">ลบ</button>
+                </form>
+              </td>
             </tr>
           <?php endforeach; ?>
         </table>
@@ -206,7 +229,13 @@ $g = get_goal($user);
         <option value="distance">ระยะทาง</option>
         <option value="streak" <?= $rank_type == "streak" ? "selected" : "" ?>>Streak</option>
       </select>
+      <!-- ช่องค้นชื่อ กด Enter หรือปุ่มค้นหา -->
+      <input class="small" type="search" name="q" value="<?= e($search) ?>" placeholder="ค้นหาชื่อ">
+      <button class="btn light">ค้นหา</button>
     </form>
+    <?php if (count($ranking) == 0): ?>
+      <p class="muted mt">ไม่พบชื่อที่ค้นหา</p>
+    <?php endif; ?>
 
     <ol class="list mt">
       <?php foreach ($ranking as $i => $r): ?>

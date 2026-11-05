@@ -73,7 +73,12 @@ function get_goal($user)
     }
 
     
-    $bmi = $user["weight"] / (($user["height"] / 100) ** 2);
+    // ไม่มีส่วนสูงหรือน้ำหนัก คิด BMI ไม่ได้ ให้ bmi = 0 (ตัวคูณ 1)
+    if (empty($user["height"]) || empty($user["weight"])) {
+        $bmi = 0;
+    } else {
+        $bmi = $user["weight"] / (($user["height"] / 100) ** 2);
+    }
     if ($bmi >= 30) {
         $bmi_rate = 0.6;
     } elseif ($bmi >= 25) {
