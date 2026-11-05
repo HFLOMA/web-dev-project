@@ -2,7 +2,7 @@
 // กำหนดค่าการเชื่อมต่อของ TiDB Cloud (นำค่ามาจากหน้าต่าง Connect บน TiDB)
 $host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"; // แก้เป็น Host ของ TiDB คุณ
 $port = "4000";                                           // พอร์ต TiDB คือ 4000
-$db   = "test";                                           // ชื่อฐานข้อมูลที่คุณสร้างตารางไว้
+$db   = "paceup_db";                                           // ชื่อฐานข้อมูลที่คุณสร้างตารางไว้
 $user = "3GyDNCxitUW82ds.root";                                  // Username จาก TiDB
 $pass = "ranWn23WByCb6rKQ";                             // Password จาก TiDB
 $charset = "utf8mb4";
