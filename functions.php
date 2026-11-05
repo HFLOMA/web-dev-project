@@ -50,9 +50,10 @@ function check_streak($pdo, $user_id)
         return ["approved", "ไม่ได้วิ่ง $missed วัน ใช้ Shield อัตโนมัติไป $missed อัน Streak ยังอยู่"];
     }
 
-    //item ไม่พอ ทํา streak เป็น 0
-    $stmt = $pdo->prepare("UPDATE paceup__users SET current_streak = 0 WHERE id = ?");
-    $stmt->bindParam(1, $user_id);
+    //item ไม่พอ ทํา streak เป็น 0 แต่จำค่าเดิมกับเวลาที่หลุดไว้ ให้ Repair / Insurance กู้คืน
+    $stmt = $pdo->prepare("UPDATE paceup__users SET current_streak = 0, lost_streak = ?, streak_lost_at = NOW() WHERE id = ?");
+    $stmt->bindParam(1, $streak);
+    $stmt->bindParam(2, $user_id);
     $stmt->execute();
     return ["rejected", "Streak $streak วัน หลุดแล้ว เพราะไม่ได้วิ่ง $missed วัน และ Shield ไม่พอ"];
 }

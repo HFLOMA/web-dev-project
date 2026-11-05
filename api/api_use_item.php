@@ -68,12 +68,13 @@ try {
         $recovered_streak = $lost_streak;
 
         // อัปเดตสตรีคกลับคืนมา ลดไอเทมลง 1 ชิ้น และเคลียร์ค่า lost_streak
-        $update_sql = "UPDATE paceup__users 
-                       SET freeze_balance = freeze_balance - 1, 
-                           current_streak = ?, 
-                           lost_streak = 0, 
-                           streak_lost_at = NULL 
-                       WHERE id = ?";
+        $update_sql = "UPDATE paceup__users
+                       SET freeze_balance = freeze_balance - 1,
+                           current_streak = ?,
+                           lost_streak = 0,
+                           streak_lost_at = NULL,
+                           last_freeze_date = CURDATE() - INTERVAL 1 DAY
+                       WHERE id = ?";   // นับว่าวันที่ขาดถูกซ่อมแล้ว ไม่งั้นหลุดซ้ำทันที
         $stmt_update = $pdo->prepare($update_sql);
         $stmt_update->execute([$recovered_streak, $user_id]);
 
@@ -113,12 +114,13 @@ try {
         $recovered_streak = intval(floor($lost_streak / 2));
 
         // อัปเดตสตรีคคืนมาครึ่งหนึ่ง ลดไอเทมลง 1 ชิ้น
-        $update_sql = "UPDATE paceup__users 
-                       SET insurance_balance = insurance_balance - 1, 
-                           current_streak = ?, 
-                           lost_streak = 0, 
-                           streak_lost_at = NULL 
-                       WHERE id = ?";
+        $update_sql = "UPDATE paceup__users
+                       SET insurance_balance = insurance_balance - 1,
+                           current_streak = ?,
+                           lost_streak = 0,
+                           streak_lost_at = NULL,
+                           last_freeze_date = CURDATE() - INTERVAL 1 DAY
+                       WHERE id = ?";   // นับว่าวันที่ขาดถูกซ่อมแล้ว ไม่งั้นหลุดซ้ำทันที
         $stmt_update = $pdo->prepare($update_sql);
         $stmt_update->execute([$recovered_streak, $user_id]);
 
