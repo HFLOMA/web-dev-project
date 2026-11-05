@@ -37,7 +37,7 @@ if (!empty($_SESSION["user_id"]) && empty($user)) {
           </svg>
         </a>
 
-        <a href="profile.php" class="avatar" title="โปรไฟล์" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important; border-radius: 50% !important; text-align: center !important; padding: 0 !important; margin: 0 !important; line-height: 1 !important;"><?= e(mb_substr($user["name"] ?? "U", 0, 1, "UTF-8")) ?></a>
+        <a href="index.php" class="avatar" title="หน้าหลัก" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important; border-radius: 50% !important; text-align: center !important; padding: 0 !important; margin: 0 !important; line-height: 1 !important;"><?= e(mb_substr($user["name"] ?? "U", 0, 1, "UTF-8")) ?></a>
 
         <span class="desktop-only" style="font-weight: 600; font-size: 14px;"><?= htmlspecialchars($user["name"] ?? "") ?></span>
 

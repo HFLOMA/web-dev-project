@@ -11,10 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $birthdate = $_POST['dob'];
     $height = $_POST['height'];
     $weight = $_POST['weight'];
+    $experience = $_POST['experience'];   // beginner / regular / serious ใช้คิดเป้าวิ่ง
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO users (name, email, pass, gender, birthdate, weight, height) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $email, $pass, $gender, $birthdate, $weight, $height]);
+        $stmt = $pdo->prepare("INSERT INTO paceup__users (name, email, pass, gender, birthdate, weight, height, experience) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $email, $pass, $gender, $birthdate, $weight, $height, $experience]);
         
         header("Location: login.php");
         exit();
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="th">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>สมัครสมาชิก</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f7fe; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
@@ -48,6 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .btn { width: 100%; background: #181818; color: #fff; border: none; padding: 12px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; }
         .btn:hover { background: #333; }
         .hint { font-size: 10px; color: #771; margin-top: 2px; }
+        /* จอใหญ่ 768px ขึ้นไป การ์ดมีที่ว่างมากขึ้น */
+        @media (min-width: 768px) { .card { padding: 35px; } }
     </style>
     <script>
         function calculateBMI() {
@@ -63,18 +67,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         window.onload = calculateBMI;
+
+        // JS เช็คก่อนส่ง รหัสผ่าน 2 ช่องต้องตรงกัน อายุ 18 ขึ้นไป
+        function checkForm() {
+            let pass = document.getElementById('password').value;
+            let pass2 = document.getElementById('password2').value;
+            let age = new Date().getFullYear() - new Date(document.getElementById('dob').value).getFullYear();
+            let box = document.getElementById('formError');
+
+            if (pass != pass2) {
+                box.innerText = "รหัสผ่าน 2 ช่องไม่ตรงกัน";
+                box.style.display = "block";
+                return false;
+            }
+            if (age < 18) {
+                box.innerText = "ต้องอายุ 18 ปีขึ้นไป";
+                box.style.display = "block";
+                return false;
+            }
+            return true;
+        }
     </script>
 </head>
 <body>
 
-<div class="card">
+<main class="card">
     <?php if (!empty($error)) : ?>
         <div style="color: #c62828; background: #ffebee; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; text-align: center;">
             <?= $error ?>
         </div>
     <?php endif; ?>
     <h3>สมัครสมาชิก / แก้ไขโปรไฟล์</h3>
-    <form method="POST">
+    <!-- กล่องแจ้ง error จาก JS ซ่อนไว้ก่อน -->
+    <p id="formError" style="display: none; color: #c62828; font-size: 12px;"></p>
+    <form method="POST" onsubmit="return checkForm()">
         <div class="form-group">
             <label>ชื่อผู้ใช้</label>
             <input type="text" name="username" required>
@@ -89,8 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="form-group">
             <label>รหัสผ่าน</label>
-            <input type="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" required>
+            <input type="password" id="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" required>
             <div class="hint">อย่างน้อย 8 ตัว มีตัวพิมพ์ใหญ่ เล็ก และตัวเลข</div>
+        </div>
+        <div class="form-group">
+            <label>ยืนยันรหัสผ่าน</label>
+            <input type="password" id="password2" required>
         </div>
         <div class="form-row">
             <div class="form-group">
@@ -102,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-group">
                 <label>วันเกิด</label>
-                <input type="date" name="dob" required>
+                <input type="date" id="dob" name="dob" required>
             </div>
         </div>
         <div class="form-row">
@@ -115,6 +145,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="number" id="weight" name="weight" value="60" oninput="calculateBMI()" required>
             </div>
         </div>
+        <div class="form-group">
+            <label>ประสบการณ์วิ่ง</label>
+            <select name="experience">
+                <option value="beginner">มือใหม่</option>
+                <option value="regular">วิ่งประจำ</option>
+                <option value="serious">จริงจัง</option>
+            </select>
+        </div>
 
         <div class="calc-box">
             <div class="calc-row">
@@ -125,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <button type="submit" class="btn">บันทึก</button>
     </form>
-</div>
+</main>
 
 </body>
 </html>

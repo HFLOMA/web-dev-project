@@ -18,10 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if ($user && (password_verify($password, $user['pass']) || $password === '12345678' || $password === $user['pass'])) {
+    if ($user && password_verify($password, $user['pass'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['name'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['session_id'] = session_id();   // ดึงเลข session id มาเก็บ
+        // ติ๊กจดจำอีเมล เก็บใน cookie 7 วัน
+        if (isset($_POST['remember'])) {
+            setcookie("remember_email", $email, time() + 60 * 60 * 24 * 7);
+        }
         header("Location: index.php");
         exit();
     } else {
@@ -33,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="th">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>เข้าสู่ระบบ</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f7fe; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
@@ -47,11 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .error { color: #c62828; font-size: 12px; background: #ffebee; padding: 8px; border-radius: 6px; margin-bottom: 15px; text-align: center; }
         .link { text-align: center; margin-top: 15px; font-size: 13px; }
         .link a { color: #d84315; text-decoration: none; font-weight: bold; }
+        /* จอใหญ่ 768px ขึ้นไป การ์ดมีที่ว่างมากขึ้น */
+        @media (min-width: 768px) { .card { padding: 40px; } }
     </style>
 </head>
 <body>
 
-<div class="card">
+<main class="card">
     <h2>เข้าสู่ระบบ</h2>
     <p>วิ่งทุกวัน สะสม Streak แข่งกับเพื่อน</p>
 
@@ -62,19 +70,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <form method="POST">
         <div class="form-group">
             <label>อีเมล</label>
-            <input type="email" name="email" placeholder="you@email.com" required>
+            <!-- เคยติ๊กจดจำ เติมอีเมลจาก cookie ให้ -->
+            <input type="email" name="email" placeholder="you@email.com" value="<?= htmlspecialchars($_COOKIE['remember_email'] ?? '') ?>" required>
         </div>
         <div class="form-group">
             <label>รหัสผ่าน</label>
             <input type="password" name="password" placeholder="อย่างน้อย 8 ตัวอักษร" minlength="8" required>
         </div>
+        <label><input type="checkbox" name="remember" style="width: auto;"> จดจำอีเมล</label>
+        <br>
         <button type="submit" class="btn">เข้าสู่ระบบ</button>
     </form>
 
     <div class="link">
         ยังไม่มีบัญชี? <a href="register.php">สมัครสมาชิก</a>
     </div>
-</div>
+</main>
 
 </body>
 </html>

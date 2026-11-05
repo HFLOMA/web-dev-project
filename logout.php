@@ -2,6 +2,7 @@
 // logout.php - ล้าง session ทั้งหมดและกลับไปหน้า login
 session_start();
 
+unset($_SESSION["user_id"]);   // ลบตัวแปร session ทีละตัว
 $_SESSION = [];
 session_unset();
 session_destroy();
