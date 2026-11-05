@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-row { display: flex; gap: 10px; }
         .form-row .form-group { flex: 1; }
         label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #444; }
-        input, select { width: 100%; padding: 9px; border: 1px solid #ddd; border-radius:[cite: 10]6px; box-sizing: border-box; font-size: 13px; }
+        input, select { width: 100%; padding: 9px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 13px; }
         .calc-box { border: 1px solid #222; border-radius: 8px; padding: 12px; background: #fafafa; margin: 15px 0; font-size: 13px; }
         .calc-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
         .btn { width: 100%; background: #181818; color: #fff; border: none; padding: 12px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; }
