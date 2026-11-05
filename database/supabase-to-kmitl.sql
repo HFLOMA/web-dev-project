@@ -34,7 +34,8 @@ CREATE TABLE paceup__users (
   freeze_balance    INT NULL DEFAULT 0 COMMENT 'จำนวนไอเทม Freeze ที่มี',
   insurance_balance INT NULL DEFAULT 0 COMMENT 'จำนวนไอเทม Insurance ที่มี',
   created_at        DATETIME NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'วันที่สมัคร',
-  experience        VARCHAR(255) NULL COMMENT 'ประสบการณ์วิ่ง: beginner / regular / serious'
+  experience        VARCHAR(255) NULL COMMENT 'ประสบการณ์วิ่ง: beginner / regular / serious',
+  coin_balance      DECIMAL(10,2) NOT NULL DEFAULT 150.00 COMMENT 'เหรียญคงเหลือ ใช้ซื้อไอเทม'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='สมาชิก (นักวิ่ง)';
 

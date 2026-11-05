@@ -2,7 +2,12 @@
 require_once "config/connect.php";
 require_once "functions.php";
 
-$user_id = $_SESSION["user_id"] ?? 1;
+// ยังไม่ login เด้งไปหน้า login
+if (empty($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit;
+}
+$user_id = $_SESSION["user_id"];
 
 // ดึงข้อมูลผู้ใช้
 $stmt = $pdo->prepare("SELECT * FROM paceup__users WHERE id = ?");

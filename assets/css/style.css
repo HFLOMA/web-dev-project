@@ -314,7 +314,7 @@ button {
    ------------------------------------------------------------ */
 .items-grid-pc {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;     /* มือถือ 1 คอลัมน์ จอใหญ่ดู @media ท้ายไฟล์ */
     gap: 24px;
     margin-bottom: 30px;
 }
@@ -709,7 +709,7 @@ button {
 /* 4 กล่องสถิติ KPI เรียง 4 คอลัมน์ */
 .kpi-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);     /* มือถือ 2 คอลัมน์ */
     gap: 20px;
     margin-bottom: 30px;
 }
@@ -738,7 +738,7 @@ button {
 /* กราฟและตารางแบบ 2 คอลัมน์ */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: 1fr 1.25fr;
+    grid-template-columns: 1fr;     /* มือถือ เรียงลงล่าง */
     gap: 24px;
     margin-bottom: 30px;
 }
@@ -853,4 +853,11 @@ footer {
     font-size: 13px;
     color: #94a3b8;
     margin-top: auto;
+}
+
+/* Mobile First: จอ 768px ขึ้นไปค่อยแบ่งคอลัมน์ */
+@media (min-width: 768px) {
+    .items-grid-pc { grid-template-columns: repeat(3, 1fr); }
+    .kpi-row { grid-template-columns: repeat(4, 1fr); }
+    .dashboard-grid { grid-template-columns: 1fr 1.25fr; }
 }

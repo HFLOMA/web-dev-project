@@ -1,6 +1,5 @@
 # ไฟล์ รายชื่อ หน้าขึ้น github
-connect.php
-config/connect.php
+/connect.php
 
 # รูปที่ user อัป ไม่ขึ้น แต่เก็บโฟลเดอร์ไว้ด้วย .gitkeep ไม่งั้นเช็คอินแล้วเก็บรูปไม่ได้
 uploads/*

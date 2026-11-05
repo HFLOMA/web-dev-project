@@ -14,8 +14,9 @@ if (empty($_SESSION["user_id"])) {
 $userId = intval($_SESSION["user_id"]);
 $amount = isset($_POST["amount"]) ? floatval($_POST["amount"]) : 0;
 
-if ($amount <= 0 || $amount > 10000) {
-    echo json_encode(["success" => false, "message" => "กรุณาระบุจำนวนเหรียญระหว่าง 1 ถึง 10,000 เหรียญ"]);
+// ให้ตรงกับช่องในฟอร์ม min 10 max 5000
+if ($amount < 10 || $amount > 5000) {
+    echo json_encode(["success" => false, "message" => "กรุณาระบุจำนวนเหรียญระหว่าง 10 ถึง 5,000 เหรียญ"]);
     exit;
 }
 

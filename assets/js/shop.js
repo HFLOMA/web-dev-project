@@ -54,10 +54,18 @@ function openBuyModal(itemId, itemName, price, itemImg) {
     currentItem.qty = qty;
 
     let totalPrice = numericPrice * qty;
+
+    // โปร ซื้อ 3 ชิ้นขึ้นไป ลด 10% (ต้องตรงกับ api_buy.php)
+    let promoText = "";
+    if (qty >= 3) {
+        totalPrice = totalPrice * 0.9;
+        promoText = " (โปรลด 10%)";
+    }
+
     let currentCoin = getUserCoins();
     let remaining = currentCoin - totalPrice;
 
-    document.getElementById("modalItemTitle").innerText = itemName + " × " + qty;
+    document.getElementById("modalItemTitle").innerText = itemName + " × " + qty + promoText;
     document.getElementById("modalItemPrice").innerText = totalPrice.toLocaleString() + " เหรียญ";
     
     let imgElem = document.getElementById("modalItemImg");

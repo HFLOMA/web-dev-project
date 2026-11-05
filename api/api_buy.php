@@ -66,6 +66,12 @@ try {
     }
 
     $total_price = $price * $qty;
+
+    // โปรโมชั่น ซื้อชิ้นเดียวกัน 3 ชิ้นขึ้นไป ลด 10% เช่น 59 x 3 = 177 เหลือ 159.30
+    if ($qty >= 3) {
+        $total_price = $total_price * 0.9;
+    }
+
     $coin = floatval($user["coin_balance"] ?? 0);
 
     // เช็คว่าเหรียญพอไหม

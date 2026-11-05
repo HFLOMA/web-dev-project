@@ -2,7 +2,12 @@
 require_once "config/connect.php";
 require_once "functions.php";
 
-$user_id = $_SESSION["user_id"] ?? 1;
+// ยังไม่ login เด้งไปหน้า login
+if (empty($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit;
+}
+$user_id = $_SESSION["user_id"];
 
 // ดึงข้อมูลผู้ใช้
 $stmt = $pdo->prepare("SELECT * FROM paceup__users WHERE id = ?");
@@ -63,6 +68,8 @@ function getItemImage($name) {
         <div style="margin-bottom: 24px;">
             <h1>ร้านค้าไอเทมดิจิทัล</h1>
             <p>เลือกซื้อไอเทมสำหรับช่วยรักษาสถิติการวิ่งต่อเนื่อง หรือซ่อมแซมสถิติที่ขาดไป</p>
+            <!-- ป้ายโปรโมชั่น คิดราคาจริงใน api_buy.php -->
+            <p style="color: #c2410c; font-weight: 700;">🎉 โปรโมชั่น: ซื้อไอเทมชิ้นเดียวกัน 3 ชิ้นขึ้นไป ลด 10%</p>
         </div>
 
         <!-- กล่องกระเป๋าเงินและไอเทมที่มี -->
