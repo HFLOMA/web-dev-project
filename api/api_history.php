@@ -1,9 +1,9 @@
 <?php
-// API ดึงข้อมูลประวัติการซื้อและสถิติ
+// API ดึงข้อมูลประวัติธุรกรรมและสถิติ (สำหรับหน้า history.php)
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/connect.php';
 
-// เช็ค session
+// เช็คว่าล็อกอินหรือยัง
 if (empty($_SESSION["user_id"])) {
     echo json_encode(["success" => false, "message" => "กรุณาเข้าสู่ระบบก่อน"]);
     exit;
@@ -11,74 +11,116 @@ if (empty($_SESSION["user_id"])) {
 
 $user_id = intval($_SESSION["user_id"]);
 
-// รับค่าตัวกรองและหน้า
-$period = trim($_GET["period"] ?? "all");
-$type   = trim($_GET["type"] ?? "all");
-$page   = max(1, intval($_GET["page"] ?? 1));
-$limit  = 4;
+// รับค่าตัวกรองจากหน้าเว็บ
+$period = isset($_GET["period"]) ? trim($_GET["period"]) : "all";
+$type   = isset($_GET["type"]) ? trim($_GET["type"]) : "all";
+$page   = isset($_GET["page"]) ? max(1, intval($_GET["page"])) : 1;
+$limit  = 4; // แสดงหน้าละ 4 รายการ
 
-// ฟังก์ชันแปลงวันที่เป็นภาษาไทยสั้นๆ เช่น 15 พ.ย.
-if (!function_exists('formatThaiShortDate')) {
-    function formatThaiShortDate($dateStr) {
-        if (!$dateStr) return "-";
-        $months = [
-            1 => 'ม.ค.', 2 => 'ก.พ.', 3 => 'มี.ค.', 4 => 'เม.ย.',
-            5 => 'พ.ค.', 6 => 'มิ.ย.', 7 => 'ก.ค.', 8 => 'ส.ค.',
-            9 => 'ก.ย.', 10 => 'ต.ค.', 11 => 'พ.ย.', 12 => 'ธ.ค.'
-        ];
-        $t = strtotime($dateStr);
-        if (!$t) return "-";
-        $d = date('j', $t);
-        $m = $months[intval(date('n', $t))];
-        return "$d $m";
-    }
+// ฟังก์ชันแปลงวันที่เป็นภาษาไทยสั้นๆ เช่น "15 พ.ย."
+function formatThaiShortDate($date_str) {
+    if (!$date_str) return "-";
+    $months = [
+        1 => 'ม.ค.', 2 => 'ก.พ.', 3 => 'มี.ค.', 4 => 'เม.ย.',
+        5 => 'พ.ค.', 6 => 'มิ.ย.', 7 => 'ก.ค.', 8 => 'ส.ค.',
+        9 => 'ก.ย.', 10 => 'ต.ค.', 11 => 'พ.ย.', 12 => 'ธ.ค.'
+    ];
+    $time = strtotime($date_str);
+    if (!$time) return "-";
+    $day   = date('j', $time);
+    $month = $months[intval(date('n', $time))];
+    return "$day $month";
 }
 
 try {
-    // เงื่อนไขเวลาสำหรับคำนวณ KPI
-    $where = ["o.user_id = ?"];
-    $params = [$user_id];
-
-    if ($period === "7") {
-        $where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)";
-    } else if ($period === "30") {
-        $where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)";
+    // ---------------------------------------------------------
+    // 1. คำนวณช่วงวันที่ตามตัวกรอง (7 วัน, 30 วัน, หรือ ทั้งหมด)
+    // ---------------------------------------------------------
+    $start_date = "";
+    if ($period == "7") {
+        $start_date = date("Y-m-d 00:00:00", strtotime("-6 days"));
+    } else if ($period == "30") {
+        $start_date = date("Y-m-d 00:00:00", strtotime("-29 days"));
     }
-    $where_sql = implode(" AND ", $where);
 
-    // ยอดใช้จ่ายรวม
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders o WHERE $where_sql AND o.status = 'completed'");
-    $stmt->execute($params);
-    $total_spent = floatval($stmt->fetchColumn());
+    // ---------------------------------------------------------
+    // 2. คำนวณกล่องสถิติ KPI 4 กล่อง
+    // ---------------------------------------------------------
 
-    // จำนวนชิ้นที่ซื้อ
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(oi.qty), 0) 
-        FROM paceup__orders o 
-        JOIN paceup__order_items oi ON o.id = oi.order_id 
-        WHERE $where_sql AND o.status = 'completed'");
-    $stmt->execute($params);
-    $total_items = intval($stmt->fetchColumn());
+    // ยอดใช้จ่ายรวม (เฉพาะออเดอร์ที่ซื้อไอเทมสำเร็จ)
+    if ($start_date != "") {
+        $stmt = $pdo->prepare("SELECT SUM(total_price) FROM paceup__orders 
+                               WHERE user_id = ? AND status = 'completed' AND created_at >= ?");
+        $stmt->execute([$user_id, $start_date]);
+    } else {
+        $stmt = $pdo->prepare("SELECT SUM(total_price) FROM paceup__orders 
+                               WHERE user_id = ? AND status = 'completed'");
+        $stmt->execute([$user_id]);
+    }
+    $total_spent = floatval($stmt->fetchColumn() ?: 0);
 
     // ยอดเติมเงินรวม
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders o WHERE $where_sql AND o.status = 'topup'");
-    $stmt->execute($params);
-    $total_topup = floatval($stmt->fetchColumn());
+    if ($start_date != "") {
+        $stmt = $pdo->prepare("SELECT SUM(total_price) FROM paceup__orders 
+                               WHERE user_id = ? AND status = 'topup' AND created_at >= ?");
+        $stmt->execute([$user_id, $start_date]);
+    } else {
+        $stmt = $pdo->prepare("SELECT SUM(total_price) FROM paceup__orders 
+                               WHERE user_id = ? AND status = 'topup'");
+        $stmt->execute([$user_id]);
+    }
+    $total_topup = floatval($stmt->fetchColumn() ?: 0);
 
-    // ไอเทมที่ขายดีสุด
-    $stmt = $pdo->prepare("SELECT i.name, SUM(oi.qty) AS total_qty
-        FROM paceup__orders o
-        JOIN paceup__order_items oi ON o.id = oi.order_id
-        JOIN paceup__items i ON oi.item_id = i.id
-        WHERE $where_sql AND o.status = 'completed'
-        GROUP BY i.id, i.name
-        ORDER BY total_qty DESC
-        LIMIT 1");
-    $stmt->execute($params);
-    $best = $stmt->fetch();
-    $best_seller = $best ? $best["name"] : "ยังไม่มีข้อมูล";
+    // จำนวนชิ้นที่ซื้อทั้งหมด (นับจากตาราง order_items)
+    if ($start_date != "") {
+        $sql = "SELECT SUM(oi.qty) 
+                FROM paceup__order_items oi 
+                JOIN paceup__orders o ON oi.order_id = o.id 
+                WHERE o.user_id = ? AND o.status = 'completed' AND o.created_at >= ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id, $start_date]);
+    } else {
+        $sql = "SELECT SUM(oi.qty) 
+                FROM paceup__order_items oi 
+                JOIN paceup__orders o ON oi.order_id = o.id 
+                WHERE o.user_id = ? AND o.status = 'completed'";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id]);
+    }
+    $total_items = intval($stmt->fetchColumn() ?: 0);
 
-    // ข้อมูลสำหรับวาดกราฟแท่ง (Chart.js)
-    $status_cond = ($type === 'topup') ? "status = 'topup'" : "status = 'completed'";
+    // ไอเทมที่ซื้อบ่อยสุด (ขายดีสุดของคนนี้)
+    if ($start_date != "") {
+        $sql = "SELECT i.name, SUM(oi.qty) AS sum_qty 
+                FROM paceup__order_items oi
+                JOIN paceup__orders o ON oi.order_id = o.id
+                JOIN paceup__items i ON oi.item_id = i.id
+                WHERE o.user_id = ? AND o.status = 'completed' AND o.created_at >= ?
+                GROUP BY i.name
+                ORDER BY sum_qty DESC
+                LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id, $start_date]);
+    } else {
+        $sql = "SELECT i.name, SUM(oi.qty) AS sum_qty 
+                FROM paceup__order_items oi
+                JOIN paceup__orders o ON oi.order_id = o.id
+                JOIN paceup__items i ON oi.item_id = i.id
+                WHERE o.user_id = ? AND o.status = 'completed'
+                GROUP BY i.name
+                ORDER BY sum_qty DESC
+                LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id]);
+    }
+    $best_item = $stmt->fetch();
+    $best_seller = $best_item ? $best_item["name"] : "ยังไม่มีข้อมูล";
+
+
+    // ---------------------------------------------------------
+    // 3. เตรียมข้อมูลสำหรับวาดกราฟแท่ง (Chart.js)
+    // ---------------------------------------------------------
+    $target_status = ($type === 'topup') ? 'topup' : 'completed';
     $dataset_label = ($type === 'topup') ? "ยอดเติมเงิน (เหรียญ)" : "ยอดใช้จ่าย (เหรียญ)";
     $chart_heading = ($type === 'topup') ? "ยอดเติมเงิน" : "ยอดใช้จ่าย";
 
@@ -92,186 +134,169 @@ try {
         9 => 'ก.ย.', 10 => 'ต.ค.', 11 => 'พ.ย.', 12 => 'ธ.ค.'
     ];
 
-    if ($period === "7") {
-        // ย้อนหลัง 7 วันรายวัน
+    if ($period == "7") {
+        // กราฟ 7 วันล่าสุด (รายวัน)
         $chart_heading .= "รายวัน (7 วันล่าสุด)";
 
         for ($i = 6; $i >= 0; $i--) {
-            $t = strtotime("today -$i day");
-            $d_date  = date('Y-m-d', $t);
-            $d_name  = $thai_days[intval(date('w', $t))];
-            $d_num   = date('j', $t);
-            $d_label = "$d_name $d_num";
+            $day_time = strtotime("-$i days");
+            $day_date = date("Y-m-d", $day_time);
+            $day_name = $thai_days[intval(date("w", $day_time))];
+            $day_num  = date("j", $day_time);
 
-            $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders 
-                WHERE user_id = ? AND $status_cond AND DATE(created_at) = ?");
-            $stmt->execute([$user_id, $d_date]);
-            $spent = floatval($stmt->fetchColumn() ?? 0);
+            $stmt = $pdo->prepare("SELECT SUM(total_price) FROM paceup__orders 
+                                   WHERE user_id = ? AND status = ? AND DATE(created_at) = ?");
+            $stmt->execute([$user_id, $target_status, $day_date]);
+            $sum_day = floatval($stmt->fetchColumn() ?: 0);
 
-            $chart_labels[] = $d_label;
-            $chart_data[]   = round($spent, 2);
+            $chart_labels[] = "$day_name $day_num";
+            $chart_data[]   = round($sum_day, 2);
         }
-    } else if ($period === "30") {
-        // ย้อนหลัง 4 สัปดาห์
+
+    } else if ($period == "30") {
+        // กราฟ 30 วันล่าสุด (แบ่งเป็น 4 สัปดาห์)
         $chart_heading .= "รอบ 4 สัปดาห์ (30 วันล่าสุด)";
 
-        $intervals = [
+        $week_ranges = [
             [29, 22],
             [21, 15],
             [14, 8],
             [7, 0]
         ];
 
-        foreach ($intervals as $days) {
-            $start_t = strtotime("today -{$days[0]} day");
-            $end_t   = strtotime("today -{$days[1]} day");
+        foreach ($week_ranges as $range) {
+            $from_time = strtotime("-{$range[0]} days");
+            $to_time   = strtotime("-{$range[1]} days");
 
-            $start_str = date('Y-m-d 00:00:00', $start_t);
-            $end_str   = date('Y-m-d 23:59:59', $end_t);
+            $from_str = date("Y-m-d 00:00:00", $from_time);
+            $to_str   = date("Y-m-d 23:59:59", $to_time);
 
-            $s_d = date('j', $start_t);
-            $s_m = $thai_months[intval(date('n', $start_t))];
-            $e_d = date('j', $end_t);
-            $e_m = $thai_months[intval(date('n', $end_t))];
+            $s_day   = date("j", $from_time);
+            $s_month = $thai_months[intval(date("n", $from_time))];
+            $e_day   = date("j", $to_time);
+            $e_month = $thai_months[intval(date("n", $to_time))];
 
-            $label = ($s_m === $e_m) ? "$s_d - $e_d $e_m" : "$s_d $s_m - $e_d $e_m";
+            if ($s_month == $e_month) {
+                $label = "$s_day - $e_day $e_month";
+            } else {
+                $label = "$s_day $s_month - $e_day $e_month";
+            }
 
-            $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders 
-                WHERE user_id = ? AND $status_cond AND created_at >= ? AND created_at <= ?");
-            $stmt->execute([$user_id, $start_str, $end_str]);
-            $spent = floatval($stmt->fetchColumn() ?? 0);
+            $stmt = $pdo->prepare("SELECT SUM(total_price) FROM paceup__orders 
+                                   WHERE user_id = ? AND status = ? AND created_at >= ? AND created_at <= ?");
+            $stmt->execute([$user_id, $target_status, $from_str, $to_str]);
+            $sum_week = floatval($stmt->fetchColumn() ?: 0);
 
             $chart_labels[] = $label;
-            $chart_data[]   = round($spent, 2);
+            $chart_data[]   = round($sum_week, 2);
         }
+
     } else {
-        // ทั้งหมด: สรุปเป็นรายเดือน
+        // กราฟทั้งหมด: แสดง 6 เดือนล่าสุด เรียบง่ายเข้าใจง่าย
         $chart_heading .= "รายเดือน (ทั้งหมด)";
 
-        $stmt = $pdo->prepare("SELECT MIN(created_at) FROM paceup__orders WHERE user_id = ? AND $status_cond");
-        $stmt->execute([$user_id]);
-        $min_date = $stmt->fetchColumn();
+        for ($i = 5; $i >= 0; $i--) {
+            $month_time  = strtotime("-$i month");
+            $year_num    = intval(date("Y", $month_time));
+            $month_num   = intval(date("n", $month_time));
+            $thai_year   = ($year_num + 543) % 100;
+            $month_label = $thai_months[$month_num] . " " . $thai_year;
 
-        $cur_year  = intval(date('Y'));
-        $cur_month = intval(date('n'));
+            $stmt = $pdo->prepare("SELECT SUM(total_price) FROM paceup__orders 
+                                   WHERE user_id = ? AND status = ? AND YEAR(created_at) = ? AND MONTH(created_at) = ?");
+            $stmt->execute([$user_id, $target_status, $year_num, $month_num]);
+            $sum_month = floatval($stmt->fetchColumn() ?: 0);
 
-        if ($min_date) {
-            $start_year  = intval(date('Y', strtotime($min_date)));
-            $start_month = intval(date('n', strtotime($min_date)));
-        } else {
-            $start_year  = intval(date('Y', strtotime("-2 month")));
-            $start_month = intval(date('n', strtotime("-2 month")));
-        }
-
-        $slots = [];
-        $y = $start_year;
-        $m = $start_month;
-
-        while ($y < $cur_year || ($y === $cur_year && $m <= $cur_month)) {
-            $slots[] = ['year' => $y, 'month' => $m];
-            $m++;
-            if ($m > 12) {
-                $m = 1;
-                $y++;
-            }
-        }
-
-        while (count($slots) < 3) {
-            $first = $slots[0];
-            $prev_m = $first['month'] - 1;
-            $prev_y = $first['year'];
-            if ($prev_m < 1) {
-                $prev_m = 12;
-                $prev_y--;
-            }
-            array_unshift($slots, ['year' => $prev_y, 'month' => $prev_m]);
-        }
-
-        foreach ($slots as $s) {
-            $y_val = $s['year'];
-            $m_val = $s['month'];
-            $be_year = ($y_val + 543) % 100;
-            $label = $thai_months[$m_val] . " " . $be_year;
-
-            $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM paceup__orders 
-                WHERE user_id = ? AND $status_cond AND YEAR(created_at) = ? AND MONTH(created_at) = ?");
-            $stmt->execute([$user_id, $y_val, $m_val]);
-            $spent = floatval($stmt->fetchColumn() ?? 0);
-
-            $chart_labels[] = $label;
-            $chart_data[]   = round($spent, 2);
+            $chart_labels[] = $month_label;
+            $chart_data[]   = round($sum_month, 2);
         }
     }
 
-    // ดึงตารางประวัติคำสั่งซื้อ
-    $table_where = ["o.user_id = ?"];
-    $table_params = [$user_id];
 
-    if ($period === "7") {
-        $table_where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)";
-    } else if ($period === "30") {
-        $table_where[] = "o.created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)";
+    // ---------------------------------------------------------
+    // 4. ดึงข้อมูลตารางคำสั่งซื้อ (Transactions Table & Pagination)
+    // ---------------------------------------------------------
+    // สร้างเงื่อนไข WHERE แบบเรียบง่าย
+    $conditions = ["user_id = ?"];
+    $bind_values = [$user_id];
+
+    // กรองตามเวลา
+    if ($start_date != "") {
+        $conditions[] = "created_at >= ?";
+        $bind_values[] = $start_date;
     }
 
-    if ($type === "buy") {
-        $table_where[] = "o.status IN ('completed', 'pending', 'cancelled')";
-    } else if ($type === "topup") {
-        $table_where[] = "o.status = 'topup'";
+    // กรองตามประเภทธุรกรรม
+    if ($type == "buy") {
+        $conditions[] = "status IN ('completed', 'pending', 'cancelled')";
+    } else if ($type == "topup") {
+        $conditions[] = "status = 'topup'";
     }
 
-    $table_where_sql = implode(" AND ", $table_where);
+    $where_sql = implode(" AND ", $conditions);
 
-    // นับจำนวนหน้า
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM paceup__orders o WHERE $table_where_sql");
-    $stmt->execute($table_params);
-    $total_rows  = intval($stmt->fetchColumn());
+    // นับจำนวนรายการทั้งหมดเพื่อทำปุ่มเลขหน้า
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM paceup__orders WHERE $where_sql");
+    $stmt->execute($bind_values);
+    $total_rows = intval($stmt->fetchColumn());
+
     $total_pages = max(1, ceil($total_rows / $limit));
     $offset      = ($page - 1) * $limit;
 
-    // รายการของหน้านี้
-    $stmt = $pdo->prepare("SELECT 
-            o.id AS order_id,
-            o.created_at,
-            o.status,
-            o.total_price,
-            (SELECT GROUP_CONCAT(CONCAT(i.name, ' × ', oi.qty) SEPARATOR ', ')
-             FROM paceup__order_items oi
-             JOIN paceup__items i ON oi.item_id = i.id
-             WHERE oi.order_id = o.id) AS item_names
-        FROM paceup__orders o
-        WHERE $table_where_sql
-        ORDER BY o.created_at DESC, o.id DESC
-        LIMIT $limit OFFSET $offset");
-    $stmt->execute($table_params);
-    $rows = $stmt->fetchAll();
+    // ดึงรายการคำสั่งซื้อของหน้านั้น
+    // ใช้ LIMIT และ OFFSET ตรงๆ ไม่ต้องใช้ Subquery ซับซ้อน
+    $sql_orders = "SELECT id, total_price, status, created_at 
+                   FROM paceup__orders 
+                   WHERE $where_sql 
+                   ORDER BY created_at DESC, id DESC 
+                   LIMIT $limit OFFSET $offset";
+    $stmt = $pdo->prepare($sql_orders);
+    $stmt->execute($bind_values);
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // แปลงข้อมูลเพื่อส่งกลับไปให้หน้าเว็บแสดงผล
     $transactions = [];
-    foreach ($rows as $row) {
-        $is_topup = ($row["status"] === "topup");
-        $item_name = !empty($row["item_names"]) ? $row["item_names"] : "ไอเทมดิจิทัล";
+    foreach ($orders as $ord) {
+        $order_id = $ord["id"];
+        $is_topup = ($ord["status"] === "topup");
 
         if ($is_topup) {
             $title = "เติมเงิน (จำลอง)";
-            $amount_formatted = "+" . number_format($row["total_price"], 0);
+            $amount_formatted = "+" . number_format($ord["total_price"], 0);
             $status_label = "สำเร็จ";
         } else {
+            // ดึงชื่อไอเทมของออเดอร์นี้จากตาราง order_items แบบง่ายๆ
+            $stmt_items = $pdo->prepare("SELECT i.name, oi.qty 
+                                         FROM paceup__order_items oi 
+                                         JOIN paceup__items i ON oi.item_id = i.id 
+                                         WHERE oi.order_id = ?");
+            $stmt_items->execute([$order_id]);
+            $items_list = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
+
+            $item_text_arr = [];
+            foreach ($items_list as $it) {
+                $item_text_arr[] = $it["name"] . " × " . $it["qty"];
+            }
+
+            $item_name = !empty($item_text_arr) ? implode(", ", $item_text_arr) : "ไอเทมดิจิทัล";
             $title = "ซื้อ " . $item_name;
-            $amount_formatted = "-" . number_format($row["total_price"], 0);
-            $status_label = ($row["status"] === 'completed') ? "สำเร็จ" : $row["status"];
+            $amount_formatted = "-" . number_format($ord["total_price"], 0);
+            $status_label = ($ord["status"] === 'completed') ? "สำเร็จ" : $ord["status"];
         }
 
         $transactions[] = [
-            "id"               => $row["order_id"],
-            "date"             => formatThaiShortDate($row["created_at"]),
+            "id"               => $order_id,
+            "date"             => formatThaiShortDate($ord["created_at"]),
             "title"            => $title,
             "type"             => $is_topup ? "topup" : "buy",
-            "status"           => $row["status"],
+            "status"           => $ord["status"],
             "status_label"     => $status_label,
-            "amount"           => floatval($row["total_price"]),
+            "amount"           => floatval($ord["total_price"]),
             "amount_formatted" => $amount_formatted
         ];
     }
 
+    // ส่งผลลัพธ์กลับเป็น JSON ให้หน้าเว็บ
     echo json_encode([
         "success" => true,
         "kpi" => [
@@ -294,7 +319,10 @@ try {
         "transactions" => $transactions
     ]);
 
-} catch (Throwable $e) {
-    echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาด: " . $e->getMessage()]);
+} catch (Exception $e) {
+    echo json_encode([
+        "success" => false, 
+        "message" => "เกิดข้อผิดพลาด: " . $e->getMessage()
+    ]);
 }
 ?>
