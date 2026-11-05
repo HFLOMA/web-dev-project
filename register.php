@@ -1,6 +1,8 @@
 <?php
 include "connect.php";
 
+$error = "";
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['username'];
     $email = $_POST['email'];
@@ -10,11 +12,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $height = $_POST['height'];
     $weight = $_POST['weight'];
 
-    $stmt = $pdo->prepare("INSERT INTO users (name, email, pass, gender, birthdate, weight, height) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$name, $email, $pass, $gender, $birthdate, $weight, $height]);
-    
-    header("Location: login.php");
-    exit();
+    try {
+        $stmt = $pdo->prepare("INSERT INTO users (name, email, pass, gender, birthdate, weight, height) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $email, $pass, $gender, $birthdate, $weight, $height]);
+        
+        header("Location: login.php");
+        exit();
+
+    } catch (PDOException $e) {
+        // ตรวจสอบว่าเป็น Error อีเมลซ้ำในระบบหรือไม่
+        if ($e->getCode() == 23000) {
+            $error = "อีเมลนี้ถูกใช้งานไปแล้ว กรุณาใช้อีเมลอื่น";
+        } else {
+            $error = "เกิดข้อผิดพลาดในการสมัครสมาชิก: " . $e->getMessage();
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -56,6 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
 <div class="card">
+    <?php if (!empty($error)) : ?>
+        <div style="color: #c62828; background: #ffebee; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; text-align: center;">
+            <?= $error ?>
+        </div>
+    <?php endif; ?>
     <h3>สมัครสมาชิก / แก้ไขโปรไฟล์</h3>
     <form method="POST">
         <div class="form-group">
@@ -64,12 +81,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="form-group">
             <label>อีเมล</label>
-            <input type="email" name="email" required>
+            <input type="email" name="email" 
+                placeholder="you@email.com" 
+                pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
+                title="กรุณากรอกรูปแบบอีเมลให้ถูกต้อง เช่น name@example.com" 
+                required>
         </div>
         <div class="form-group">
             <label>รหัสผ่าน</label>
             <input type="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" required>
-            <div class="hint">อย่างน้อย 8 ตัว มีตัวพิมพ์ใหญ่ เล็ก และตัวเลข (Regex)</div>
+            <div class="hint">อย่างน้อย 8 ตัว มีตัวพิมพ์ใหญ่ เล็ก และตัวเลข</div>
         </div>
         <div class="form-row">
             <div class="form-group">
