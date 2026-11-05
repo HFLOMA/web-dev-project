@@ -567,6 +567,8 @@ button {
     z-index: 999;
     align-items: center;
     justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .modal-box {
@@ -574,6 +576,8 @@ button {
     border-radius: 20px;
     width: 100%;
     max-width: 460px;
+    max-height: 90vh;
+    overflow-y: auto;
     padding: 28px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     border: 1px solid #e2e8f0;
@@ -855,9 +859,298 @@ footer {
     margin-top: auto;
 }
 
-/* Mobile First: จอ 768px ขึ้นไปค่อยแบ่งคอลัมน์ */
-@media (min-width: 768px) {
-    .items-grid-pc { grid-template-columns: repeat(3, 1fr); }
-    .kpi-row { grid-template-columns: repeat(4, 1fr); }
-    .dashboard-grid { grid-template-columns: 1fr 1.25fr; }
+/* กล่องครอบตารางสำหรับเลื่อนในจอมือถือ (Horizontal Scroll) */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN (สำหรับหน้า Shop และ History)
+   ============================================================ */
+
+/* 1. แท็บเล็ตและจอขนาดกลาง (หน้าจอ 640px - 1023px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .items-grid-pc {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .wallet-card-pc {
+        padding: 20px 24px;
+    }
+
+    .wallet-details {
+        gap: 24px;
+    }
+}
+
+/* 2. จอคอมพิวเตอร์ขนาดใหญ่ (หน้าจอ 1024px ขึ้นไป) */
+@media (min-width: 1024px) {
+    .items-grid-pc {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+    }
+
+    .kpi-row {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr 1.25fr;
+        gap: 24px;
+    }
+}
+
+/* 3. หน้าจอมือถือและแท็บเล็ตขนาดเล็ก (หน้าจอ 768px ลงไป) */
+@media (max-width: 768px) {
+    .main-container {
+        padding: 0 16px;
+        margin: 18px auto;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
+    h2 {
+        font-size: 17px;
+    }
+
+    /* กล่องกระเป๋าเงินบนมือถือ (เปลี่ยนเป็นแนวตั้ง อ่านง่าย ไม่เบียด) */
+    .wallet-card-pc {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 20px 18px;
+        gap: 16px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+    }
+
+    .wallet-details {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    /* เส้นคั่นเปลี่ยนจากแนวตั้งเป็นแนวนอน */
+    .wallet-divider {
+        width: 100%;
+        height: 1px;
+        background-color: #f1f5f9;
+    }
+
+    .wallet-col-amount {
+        font-size: 26px;
+    }
+
+    .wallet-col-sub {
+        font-size: 17px;
+    }
+
+    /* ปุ่มในกระเป๋าเงิน (ขยายเต็มให้กดง่ายด้วยนิ้วโป้ง) */
+    .wallet-actions {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .wallet-actions .btn-topup,
+    .wallet-actions .btn-history-link {
+        flex: 1;
+        justify-content: center;
+        text-align: center;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    /* การ์ดสินค้าบนมือถือ */
+    .items-grid-pc {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .product-card-pc {
+        padding: 18px 16px;
+        border-radius: 16px;
+    }
+
+    .product-icon-box {
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+    }
+
+    .product-title {
+        font-size: 16px;
+    }
+
+    .product-desc {
+        font-size: 13px;
+        margin-bottom: 18px;
+    }
+
+    .action-row {
+        gap: 8px;
+    }
+
+    /* หน้าประวัติธุรกรรม & สถิติ */
+    .page-top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .page-top-bar .btn-history-link {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    /* แถบตัวกรองบนมือถือ */
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        margin-bottom: 20px;
+    }
+
+    .filter-selects {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .select-input {
+        width: 100%;
+        padding: 9px 12px;
+        font-size: 13px;
+    }
+
+    /* กล่องสรุปสถิติ 4 กล่อง */
+    .kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .kpi-box {
+        padding: 14px;
+        border-radius: 14px;
+    }
+
+    .kpi-title {
+        font-size: 12px;
+    }
+
+    .kpi-val {
+        font-size: 20px;
+    }
+
+    /* การ์ดแดชบอร์ดและตาราง */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .panel-card {
+        padding: 18px 16px;
+        border-radius: 16px;
+    }
+
+    .panel-head {
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+    }
+
+    .panel-head h2 {
+        font-size: 15px;
+    }
+
+    /* ตารางคำสั่งซื้อ */
+    table.tx-table th {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    table.tx-table td {
+        padding: 12px 12px;
+        font-size: 13px;
+    }
+
+    .tx-amount {
+        font-size: 14px;
+    }
+
+    /* Modal ป๊อปอัปบนมือถือ */
+    .modal-box {
+        padding: 22px 18px;
+        border-radius: 16px;
+    }
+
+    .modal-actions {
+        gap: 8px;
+    }
+
+    .btn-cancel,
+    .btn-confirm {
+        flex: 1;
+        padding: 10px 14px;
+        font-size: 13px;
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+/* 4. มือถือจอเล็กพิเศษ (หน้าจอ 420px ลงไป) */
+@media (max-width: 420px) {
+    .wallet-actions {
+        flex-direction: column;
+    }
+
+    .kpi-val {
+        font-size: 18px;
+    }
+
+    .kpi-box {
+        padding: 12px 10px;
+    }
+
+    .qty-stepper {
+        height: 38px;
+    }
+
+    .qty-btn {
+        width: 30px;
+    }
+
+    .qty-stepper input {
+        width: 30px;
+        font-size: 14px;
+    }
+
+    .btn-buy {
+        height: 38px;
+        font-size: 13px;
+    }
 }

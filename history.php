@@ -35,7 +35,7 @@ $coin_balance = floatval($user["coin_balance"] ?? 0);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ประวัติธุรกรรม &amp; สถิติ - PaceUp</title>
     <link rel="stylesheet" href="css/navbar.css?v=<?= time() ?>">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
@@ -120,22 +120,24 @@ $coin_balance = floatval($user["coin_balance"] ?? 0);
                     <span id="totalRecordsText" style="font-size: 13px; color: #64748b; font-weight: 600;"></span>
                 </div>
                 
-                <table class="tx-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">วันที่</th>
-                            <th>รายการ</th>
-                            <th style="text-align: right; width: 110px;">ยอด (เหรียญ)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transactionBody">
-                        <tr>
-                            <td colspan="3" style="text-align: center; color: #94a3b8; padding: 30px;">
-                                กำลังโหลดข้อมูล...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="tx-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">วันที่</th>
+                                <th>รายการ</th>
+                                <th style="text-align: right; width: 110px;">ยอด (เหรียญ)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionBody">
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #94a3b8; padding: 30px;">
+                                    กำลังโหลดข้อมูล...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="pagination-wrap" id="paginationControls"></div>
             </div>

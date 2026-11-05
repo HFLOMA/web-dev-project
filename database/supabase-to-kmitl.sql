@@ -35,7 +35,9 @@ CREATE TABLE paceup__users (
   insurance_balance INT NULL DEFAULT 0 COMMENT 'จำนวนไอเทม Insurance ที่มี',
   created_at        DATETIME NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'วันที่สมัคร',
   experience        VARCHAR(255) NULL COMMENT 'ประสบการณ์วิ่ง: beginner / regular / serious',
-  coin_balance      DECIMAL(10,2) NOT NULL DEFAULT 150.00 COMMENT 'เหรียญคงเหลือ ใช้ซื้อไอเทม'
+  coin_balance      DECIMAL(10,2) NOT NULL DEFAULT 150.00 COMMENT 'เหรียญคงเหลือ ใช้ซื้อไอเทม',
+  lost_streak       INT NULL DEFAULT 0 COMMENT 'สตรีคก่อนหลุด (เก็บไว้ให้ไอเทมซ่อม/ชุบชีวิตกู้คืน)',
+  streak_lost_at    DATETIME NULL COMMENT 'เวลาที่สตรีคหลุด (ใช้นับเวลา 24-48 ชม. สำหรับกู้คืน)'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='สมาชิก (นักวิ่ง)';
 
